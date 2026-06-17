@@ -1,0 +1,6 @@
+{
+  "name": "SIM ANJAB-ABK PINTAR",
+  "description": "Sistem Informasi Analisis Jabatan dan Analisis Beban Kerja ASN berdasarkan PermenPAN-RB No. 1 Tahun 2020.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

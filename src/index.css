@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+@media print {
+  /* Hide all generic app navigation, sidebar, headers, and floating widgets completely */
+  aside,
+  header,
+  footer,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Reset outer container margins and background colors for clean white print */
+  body,
+  #root,
+  main,
+  div {
+    background: transparent !important;
+    background-color: transparent !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Configure A4 portrait sizes and margins */
+  @page {
+    size: A4 portrait;
+    margin: 2cm 1.5cm 2cm 1.5cm;
+  }
+
+  /* Table styling optimization for high contrast printing */
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+    page-break-inside: avoid;
+  }
+
+  th, td {
+    border: 1px solid #000000 !important;
+    color: #000000 !important;
+    padding: 6px 8px !important;
+  }
+
+  tr {
+    page-break-inside: avoid !important;
+    page-break-after: auto !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
+  /* Maintain formal serif typography for official government documents */
+  .font-serif {
+    font-family: "Times New Roman", Times, Georgia, serif !important;
+  }
+}
+
