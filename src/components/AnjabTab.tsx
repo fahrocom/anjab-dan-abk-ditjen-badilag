@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Jabatan, UnitKerja, Kualifikasi, SyaratJabatan } from "../types";
+import { Jabatan, UnitKerja, Kualifikasi, SyaratJabatan, UraianTugas } from "../types";
 import { 
   Briefcase, 
   Sparkles, 
@@ -87,6 +87,12 @@ export default function AnjabTab({
   const [jurusanList, setJurusanList] = useState<string[]>([]);
   const [pelatihan, setPelatihan] = useState("");
   const [pengalaman, setPengalaman] = useState("");
+  
+  // Uraian Tugas states
+  const [uraianList, setUraianList] = useState<Omit<UraianTugas, "id">[]>([]);
+  const [newUraian, setNewUraian] = useState("");
+  const [newHasilKerja, setNewHasilKerja] = useState("Dokumen");
+  const [newWaktu, setNewWaktu] = useState(120);
 
   // Syarat Jabatan states
   const [pangkatGolongan, setPangkatGolongan] = useState("Penata Muda - III/a");
@@ -116,6 +122,19 @@ export default function AnjabTab({
 
   const handleRemoveJurusan = (index: number) => {
     setJurusanList(jurusanList.filter((_, i) => i !== index));
+  };
+
+  const handleAddUraian = () => {
+    if (newUraian.trim()) {
+      setUraianList([...uraianList, { uraian: newUraian, hasilKerja: newHasilKerja, waktuPenyelesaian: newWaktu, bebanKerja: 0 }]);
+      setNewUraian("");
+      setNewHasilKerja("Dokumen");
+      setNewWaktu(120);
+    }
+  };
+
+  const handleRemoveUraian = (index: number) => {
+    setUraianList(uraianList.filter((_, i) => i !== index));
   };
 
   const toggleMultiselect = (array: string[], setArray: (arr: string[]) => void, val: string) => {
@@ -237,6 +256,7 @@ export default function AnjabTab({
         setJurusanList(j.kualifikasi.jurusan);
         setPelatihan(j.kualifikasi.pelatihan);
         setPengalaman(j.kualifikasi.pengalaman);
+        setUraianList(j.uraianTugas);
         setPangkatGolongan(j.syaratJabatan.pangkatGolongan);
         setBakatKerja(j.syaratJabatan.bakatKerja);
         setTemperamenKerja(j.syaratJabatan.temperamenKerja);
@@ -252,6 +272,7 @@ export default function AnjabTab({
       setPegawaiRiil(0);
       setPendidikanMinimal("S1 (Strata-1)");
       setJurusanList([]);
+      setUraianList([]);
       setPelatihan("");
       setPengalaman("");
       setPangkatGolongan("Penata Muda - III/a");
@@ -292,19 +313,20 @@ export default function AnjabTab({
       kondisiFisik
     };
 
-    // Extract any temporary AI tasks we generated, converting to correct structures
-    const storedTasks: any[] = (window as any)._tempoAiTasks || [];
-    const computedTasks = storedTasks.map((t, index) => ({
-      id: `ut-ai-${Date.now()}-${index}`,
+    // Prepare tasks: combine existing list or new AI-tasks
+    const aiTasks: UraianTugas[] = ((window as any)._tempoAiTasks || []).map((t: any, idx: number) => ({
+      id: `ut-ai-${Date.now()}-${idx}`,
       uraian: t.uraian,
       hasilKerja: t.hasilKerja || "Dokumen",
       waktuPenyelesaian: Number(t.waktuPenyelesaian || 120),
-      bebanKerja: 0 // user specifies workload values later in ABK
+      bebanKerja: 0
     }));
 
+    const finalUraianTasks: UraianTugas[] = uraianList.length > 0
+      ? uraianList.map((t, idx) => ({ ...t, id: `ut-${Date.now()}-${idx}` }))
+      : aiTasks;
+
     if (currentEditId) {
-      // Find original tugas, preserve if not regenerating
-      const orig = jabatanList.find(x => x.id === currentEditId);
       onUpdateJabatan(currentEditId, {
         unitKerjaId,
         nama,
@@ -313,8 +335,7 @@ export default function AnjabTab({
         pegawaiRiil: Number(pegawaiRiil),
         kualifikasi,
         syaratJabatan,
-        // if user loaded new tasks through AI, append them, otherwise preserve old
-        uraianTugas: computedTasks.length > 0 ? computedTasks : (orig?.uraianTugas || [])
+        uraianTugas: finalUraianTasks
       });
     } else {
       onAddJabatan({
@@ -325,8 +346,7 @@ export default function AnjabTab({
         pegawaiRiil: Number(pegawaiRiil),
         kualifikasi,
         syaratJabatan,
-        // initialized with generated tasks or empty array
-        uraianTugas: computedTasks.length > 0 ? computedTasks : []
+        uraianTugas: finalUraianTasks
       });
     }
 
@@ -392,6 +412,42 @@ export default function AnjabTab({
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-8 divide-y divide-slate-100 text-slate-800">
+            {/* SECTION: Uraian Tugas (NEW) */}
+            <div className="space-y-4">
+              <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest flex items-center gap-1.5 pb-2 border-b border-slate-205">
+                <ChevronRight className="w-4 h-4 text-blue-600" /> Metode Kerja & Uraian Tugas
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                <div className="md:col-span-6">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Uraian Tugas</label>
+                  <input type="text" value={newUraian} onChange={e => setNewUraian(e.target.value)} className="w-full text-xs px-3 py-2 border border-slate-300 rounded-sm" placeholder="e.g. Menyusun laporan keuangan..." />
+                </div>
+                <div className="md:col-span-3">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Satuan Hasil</label>
+                  <input type="text" value={newHasilKerja} onChange={e => setNewHasilKerja(e.target.value)} className="w-full text-xs px-3 py-2 border border-slate-300 rounded-sm" />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Waktu (menit)</label>
+                  <input type="number" value={newWaktu} onChange={e => setNewWaktu(Number(e.target.value))} className="w-full text-xs px-3 py-2 border border-slate-300 rounded-sm" />
+                </div>
+              </div>
+              <table className="w-full text-xs mt-2 border border-slate-200">
+                <thead className="bg-slate-50 text-slate-500">
+                  <tr><th className="p-2 border-r">Uraian</th><th className="p-2 border-r">Hasil</th><th className="p-2 border-r">Waktu</th><th className="p-2">Aksi</th></tr>
+                </thead>
+                <tbody className="divide-y">
+                  {uraianList.map((t, i) => (
+                    <tr key={i}>
+                      <td className="p-2 border-r">{t.uraian}</td>
+                      <td className="p-2 border-r">{t.hasilKerja}</td>
+                      <td className="p-2 border-r">{t.waktuPenyelesaian}</td>
+                      <td className="p-2 text-center text-red-500 cursor-pointer" onClick={() => handleRemoveUraian(i)}>Hapus</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
             {/* SECTION 1: Identitas Jabatan & AI Copilot */}
             <div className="space-y-5">
               <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest flex items-center gap-1.5 pb-2 border-b border-slate-205">

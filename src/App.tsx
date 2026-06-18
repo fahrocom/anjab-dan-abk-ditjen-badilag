@@ -100,66 +100,62 @@ export default function App() {
 
   // Firebase Auth and Cloud Sync States
   const [user, setUser] = useState<User | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [userRole, setUserRole] = useState<"admin" | "editor" | "viewer">("viewer");
   const [cloudUserId, setCloudUserId] = useState<string | null>(null);
-  const [syncStatus, setSyncStatus] = useState<"connecting" | "idle" | "syncing" | "synced" | "error">("connecting");
+  const [syncStatus, setSyncStatus] = useState<"connecting" | "idle" | "syncing" | "synced" | "error">("idle");
   const [isDataLoaded, setIsDataLoaded] = useState<boolean>(false);
 
   // 1. Authenticate user anonymously & pull initial cloud state
   useEffect(() => {
-    // Generate or fetch fallback unique client ID so cloud sync works even without Firebase Auth enabled
-    let storedLocalUid = localStorage.getItem("sim_anjab_abk_local_uid");
-    if (!storedLocalUid) {
-      storedLocalUid = "client-" + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-      localStorage.setItem("sim_anjab_abk_local_uid", storedLocalUid);
-    }
-
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
         setCloudUserId(currentUser.uid);
+        setIsAuthenticated(true);
         await initCloudData(currentUser.uid);
       } else {
-        signInAnonymously(auth).catch(async (err) => {
-          console.warn("Firebase Auth Anonymous Sign-In failed/restricted, falling back to secure local client ID:", err);
-          // Fall back gracefully to active local-uid cloud document matching
-          setCloudUserId(storedLocalUid);
-          await initCloudData(storedLocalUid);
-        });
+        setIsAuthenticated(false);
+        setIsDataLoaded(true); // Ready for login
+        setSyncStatus("idle");
       }
     });
 
-    async function initCloudData(uid: string) {
-      setSyncStatus("syncing");
-      try {
-         const cloudData = await getUserData(uid);
-         if (cloudData) {
-           // Document exists! Load state variables
-           if (cloudData.settings) setSettings(cloudData.settings);
-           if (cloudData.unitKerja) setUnitKerja(cloudData.unitKerja);
-           if (cloudData.jabatan) setJabatan(cloudData.jabatan);
-           if (cloudData.jenisPerkaraList) setJenisPerkaraList(cloudData.jenisPerkaraList);
-           if (cloudData.dataPerkaraList) setDataPerkaraList(cloudData.dataPerkaraList);
-         } else {
-           // New user document registry, save current memory representation
-           await saveUserData(uid, {
-             settings,
-             unitKerja,
-             jabatan,
-             jenisPerkaraList,
-             dataPerkaraList
-           });
-         }
-         setSyncStatus("synced");
-      } catch (error) {
-         console.error("Failed to fetch/register cloud document:", error);
-         setSyncStatus("error");
-      } finally {
-         setIsDataLoaded(true);
-      }
-    }
-
     return () => unsubscribe();
   }, []);
+
+  async function initCloudData(uid: string) {
+    setSyncStatus("syncing");
+    try {
+        const cloudData = await getUserData(uid);
+        if (cloudData) {
+          // Document exists! Load state variables
+          if (cloudData.settings) setSettings(cloudData.settings);
+          if (cloudData.unitKerja) setUnitKerja(cloudData.unitKerja);
+          if (cloudData.jabatan) setJabatan(cloudData.jabatan);
+          if (cloudData.jenisPerkaraList) setJenisPerkaraList(cloudData.jenisPerkaraList);
+          if (cloudData.dataPerkaraList) setDataPerkaraList(cloudData.dataPerkaraList);
+          if (cloudData.role) setUserRole(cloudData.role);
+        } else {
+          // New user document registry, save current memory representation
+          await saveUserData(uid, {
+            settings,
+            unitKerja,
+            jabatan,
+            jenisPerkaraList,
+            dataPerkaraList,
+            role: "viewer"
+          });
+          setUserRole("viewer");
+        }
+        setSyncStatus("synced");
+    } catch (error) {
+        console.error("Failed to fetch/register cloud document:", error);
+        setSyncStatus("error");
+    } finally {
+        setIsDataLoaded(true);
+    }
+  }
 
   // 2. Continuous Realtime Data Cloud Syncing
   useEffect(() => {
@@ -174,7 +170,8 @@ export default function App() {
           unitKerja,
           jabatan,
           jenisPerkaraList,
-          dataPerkaraList
+          dataPerkaraList,
+          role: userRole
         });
         setSyncStatus("synced");
       } catch (error) {
@@ -184,7 +181,7 @@ export default function App() {
     }, 1500); // 1.5 seconds debounce
 
     return () => clearTimeout(delayDebounceFn);
-  }, [settings, unitKerja, jabatan, jenisPerkaraList, dataPerkaraList, cloudUserId, isDataLoaded]);
+  }, [settings, unitKerja, jabatan, jenisPerkaraList, dataPerkaraList, cloudUserId, isDataLoaded, userRole]);
 
   // Sync state to local storage on changes
   useEffect(() => {
@@ -367,6 +364,22 @@ export default function App() {
   };
 
   const { title: activeTitle, sub: activeSubtitle } = getTabTitle();
+
+  if (!isDataLoaded) return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">Memuat Sistem...</div>;
+
+  if (!isAuthenticated) {
+    return (
+      <LoginFrontpage
+        systemName="SIM ANJAB-ABK"
+        syncStatus={syncStatus}
+        onLoginSuccess={(uid, email) => {
+          setCloudUserId(uid);
+          setIsAuthenticated(true);
+          initCloudData(uid);
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row font-sans text-slate-900 select-none antialiased print:bg-white print:text-black">
@@ -672,6 +685,7 @@ export default function App() {
               wke={settings.wkeTahunan}
               setActiveTab={setActiveTab}
               setSelectedJabatanIdForAbk={setSelectedJabatanIdForAbk}
+              userRole={userRole}
             />
           )}
 

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Jabatan, UnitKerja } from "../types";
+import { Jabatan, UnitKerja, UserRole } from "../types";
 import { 
   Building2, 
   Briefcase, 
@@ -14,6 +14,7 @@ import {
   Scaling,
   ArrowRightLeft
 } from "lucide-react";
+import jsPDF from "jspdf";
 import { 
   ResponsiveContainer, 
   BarChart, 
@@ -166,6 +167,7 @@ interface DashboardTabProps {
   wke: number;
   setActiveTab: (tab: string) => void;
   setSelectedJabatanIdForAbk?: (id: string) => void;
+  userRole: UserRole;
 }
 
 export default function DashboardTab({ 
@@ -173,11 +175,22 @@ export default function DashboardTab({
   jabatan, 
   wke, 
   setActiveTab,
-  setSelectedJabatanIdForAbk
+  setSelectedJabatanIdForAbk,
+  userRole
 }: DashboardTabProps) {
 
   const [activeChartPerspective, setActiveChartPerspective] = useState<"comparison" | "donut" | "gap">("comparison");
   const [selectedCaseTypeTrend, setSelectedCaseTypeTrend] = useState<string>("all");
+
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    doc.text("Laporan Analisis Jabatan & Beban Kerja", 10, 10);
+    doc.text(`Total Unit Kerja: ${totalUnits}`, 10, 20);
+    doc.text(`Total Jabatan: ${totalJabatan}`, 10, 30);
+    doc.text(`Total Pegawai Riil: ${totalPegawaiRiil}`, 10, 40);
+    doc.text(`Total Kebutuhan Formasi: ${totalFormasiBulat}`, 10, 50);
+    doc.save("Ringkasan_Analisis_Beban_Kerja.pdf");
+  };
 
 
   // Calculations
@@ -263,6 +276,13 @@ export default function DashboardTab({
               className="px-5 py-2.5 bg-slate-800 hover:bg-slate-750 text-slate-200 hover:text-white border border-slate-700 font-bold text-xs rounded-sm transition-all uppercase tracking-wider"
             >
               Lihat Rekap Formasi
+            </button>
+            <button 
+              onClick={handleExportPDF}
+              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-sm transition-all shadow-md uppercase tracking-wider flex items-center gap-2"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              Export Summary (PDF)
             </button>
           </div>
         </div>

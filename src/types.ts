@@ -1,3 +1,5 @@
+export type UserRole = "admin" | "editor" | "viewer";
+
 export interface UnitKerja {
   id: string;
   nama: string;

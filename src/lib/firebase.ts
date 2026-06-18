@@ -39,6 +39,7 @@ export interface CloudData {
   jabatan: any[];
   jenisPerkaraList: any[];
   dataPerkaraList: any[];
+  role?: "admin" | "editor" | "viewer";
 }
 
 /**
@@ -68,7 +69,8 @@ export async function getUserData(userId: string): Promise<CloudData | null> {
       unitKerja: docData.unitKerja || [],
       jabatan: docData.jabatan || [],
       jenisPerkaraList: docData.jenisPerkaraList || [],
-      dataPerkaraList: docData.dataPerkaraList || []
+      dataPerkaraList: docData.dataPerkaraList || [],
+      role: docData.role || "viewer"
     };
   }
   return null;

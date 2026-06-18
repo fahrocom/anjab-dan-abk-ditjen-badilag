@@ -71,6 +71,13 @@ export default function LoginFrontpage({ onLoginSuccess, syncStatus, systemName 
       return;
     }
 
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
+    if (!passwordRegex.test(password)) {
+      setErrorMsg("Password harus minimal 8 karakter, mengandung setidaknya satu huruf dan satu angka.");
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       
