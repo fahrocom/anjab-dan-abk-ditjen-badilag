@@ -1,5 +1,9 @@
 import React, { useState } from "react";
 import { Jabatan, UnitKerja, AppSettings } from "../types";
+import { PrintRecap } from "./PrintRecap";
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { 
   FileText, 
   Download, 
@@ -244,6 +248,48 @@ export default function RecapTab({
     document.body.removeChild(link);
   };
 
+  const handleExportExcel = () => {
+    const data = filteredJabatans.map((j, index) => {
+      const unit = unitKerjaList.find(u => u.id === j.unitKerjaId);
+      const metrics = getJobAbkMetrics(j);
+      return {
+        "No": index + 1,
+        "Unit Kerja": unit ? unit.nama : "Tanpa Unit",
+        "Nomenklatur Jabatan": j.nama,
+        "Kelas": j.kelasJabatan,
+        "Pegawai Riil (Bezetting)": j.pegawaiRiil,
+        "Hasil ABK (Desimal)": metrics.decimal.toFixed(3),
+        "Kebutuhan Standar (Bulat)": metrics.rounded,
+        "Selisih Formasi": metrics.diff,
+        "Evaluasi Tindakan": metrics.evalStatus
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap ABK");
+    
+    XLSX.writeFile(workbook, `Rekap_Anjab_ABK_${settings.namaInstansi.replace(/\s+/g, '_')}.xlsx`);
+  };
+
+  const handleExportPDF = async () => {
+    const element = document.getElementById('printable-recap');
+    if (!element) return;
+
+    // Temporarily show the element to capture it
+    element.classList.remove('hidden');
+    const canvas = await html2canvas(element, { scale: 2 });
+    element.classList.add('hidden');
+    
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+    
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+    pdf.save(`Rekap_Anjab_ABK_${settings.namaInstansi.replace(/\s+/g, '_')}.pdf`);
+  };
+
   // Helper trigger browser print dialog with page title override for high quality PDF file-naming
   const executePrint = () => {
     const originalTitle = document.title;
@@ -271,7 +317,7 @@ export default function RecapTab({
   };
 
   return (
-    <div id="recap-tab-container" className="space-y-6 animate-fadeIn text-slate-900">
+    <div id="recap-tab-container" className="space-y-6 animate-fadeIn text-slate-900 print:hidden">
       
       {/* 1. VIEW CONTROLLER (DASHBOARD & TAB) */}
       {!printTarget ? (
@@ -292,7 +338,19 @@ export default function RecapTab({
                 onClick={handleExportCSV}
                 className="px-3.5 py-2 border border-slate-300 hover:border-slate-850 rounded-sm text-slate-700 hover:text-slate-900 bg-white font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
               >
-                <FileSpreadsheet className="w-4 h-4 text-emerald-600" /> Ekspor Excel
+                <FileSpreadsheet className="w-4 h-4 text-emerald-600" /> Ekspor CSV
+              </button>
+              <button
+                onClick={handleExportExcel}
+                className="px-3.5 py-2 border border-slate-300 hover:border-slate-850 rounded-sm text-slate-700 hover:text-slate-900 bg-white font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-green-700" /> Ekspor Excel
+              </button>
+              <button
+                onClick={handleExportPDF}
+                className="px-3.5 py-2 border border-slate-300 hover:border-slate-850 rounded-sm text-slate-700 hover:text-slate-900 bg-white font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
+              >
+                <FileText className="w-4 h-4 text-red-600" /> Ekspor PDF
               </button>
               <button
                 onClick={() => setPrintTarget({ type: "recap-all" })}
@@ -1254,6 +1312,7 @@ export default function RecapTab({
         </div>
       )}
 
+    <PrintRecap jabatanList={filteredJabatans} unitKerjaList={unitKerjaList} settings={settings} wke={wke} />
     </div>
   );
 }

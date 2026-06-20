@@ -11,7 +11,7 @@ import { CourtPreset } from "./data/religionCourtsPresets";
 
 // Firebase imports
 import { auth, saveUserData, getUserData } from "./lib/firebase";
-import { signInAnonymously, onAuthStateChanged, User } from "firebase/auth";
+import { signInAnonymously, onAuthStateChanged, User, signOut } from "firebase/auth";
 
 // Tabs
 import DashboardTab from "./components/DashboardTab";
@@ -533,6 +533,14 @@ export default function App() {
                   <SlidersHorizontal className="w-4 h-4 text-blue-550 shrink-0" />
                   PENGATURAN INSTANSI
                 </button>
+                {/* 7. Logout */}
+                <button
+                  onClick={() => signOut(auth)}
+                  className="w-full flex items-center gap-3 py-2.5 px-3 text-xs font-bold transition-all rounded-sm leading-none border-l-3 border-transparent text-slate-400 hover:text-rose-400 hover:bg-rose-900/20 select-none text-left cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4 text-rose-500 shrink-0" />
+                  KELUAR / LOGOUT
+                </button>
               </div>
             </div>
 
@@ -686,6 +694,7 @@ export default function App() {
               setActiveTab={setActiveTab}
               setSelectedJabatanIdForAbk={setSelectedJabatanIdForAbk}
               userRole={userRole}
+              settings={settings}
             />
           )}
 
@@ -752,7 +761,9 @@ export default function App() {
           {activeTab === "settings" && (
             <SettingsTab
               settings={settings}
+              jabatanList={jabatan}
               onUpdateSettings={setSettings}
+              onUpdateJabatanList={setJabatan}
               onResetToMock={handleResetToMock}
               onWipeData={handleWipeData}
               onImportBackup={handleImportBackup}

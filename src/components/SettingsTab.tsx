@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { AppSettings } from "../types";
+import { AppSettings, UserRecord, UserRole, Jabatan } from "../types";
 import { 
   Settings, 
   Save, 
@@ -17,7 +17,9 @@ import {
 
 interface SettingsTabProps {
   settings: AppSettings;
+  jabatanList: Jabatan[];
   onUpdateSettings: (settings: AppSettings) => void;
+  onUpdateJabatanList: (jabatanList: Jabatan[]) => void;
   onResetToMock: () => void;
   onWipeData: () => void;
   onImportBackup: (importedJson: string) => boolean;
@@ -26,7 +28,9 @@ interface SettingsTabProps {
 
 export default function SettingsTab({
   settings,
+  jabatanList,
   onUpdateSettings,
+  onUpdateJabatanList,
   onResetToMock,
   onWipeData,
   onImportBackup,
@@ -37,7 +41,10 @@ export default function SettingsTab({
   const [wke, setWke] = useState(settings.wkeTahunan);
   const [namaInstansi, setNamaInstansi] = useState(settings.namaInstansi);
   const [alamat, setAlamat] = useState(settings.alamat || "");
-  const [kelasPengadilan, setKelasPengadilan] = useState<"IA Khusus" | "IA" | "IB" | "II" | "Banding" | "Pusat">(settings.kelasPengadilan || "IA");
+  const [kelasPengadilan, setKelasPengadilan] = useState<"IA" | "IB" | "II" | "Banding" | "Pusat">(settings.kelasPengadilan || "IA");
+  const [teamMembers, setTeamMembers] = useState<UserRecord[]>(settings.teamMembers || []);
+  const [newEmail, setNewEmail] = useState("");
+  const [newRole, setNewRole] = useState<UserRole>("viewer");
   const [isSaved, setIsSaved] = useState(false);
   
   const [importMode, setImportMode] = useState<"file" | "text">("file");
@@ -46,13 +53,41 @@ export default function SettingsTab({
   const [isDragging, setIsDragging] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
 
+  const exportCSV = (headers: string[], rows: (string | number)[][], filename: string) => {
+    const csvContent = [headers, ...rows].map(e => e.map(item => `"${String(item).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+  };
+
+  const exportJabatanCSV = () => {
+    const headers = ["ID", "Nama Jabatan", "Kelas Jabatan", "Pegawai Riil"];
+    const rows = jabatanList.map(j => [j.id, j.nama, j.kelasJabatan, j.pegawaiRiil]);
+    exportCSV(headers, rows, 'data_jabatan.csv');
+  };
+
+  const exportUraianTugasCSV = () => {
+    const headers = ["Jabatan", "Uraian Tugas", "Hasil Kerja", "Waktu (Menit)", "Volume/Tahun"];
+    const rows: (string | number)[][] = [];
+    jabatanList.forEach(j => {
+      j.uraianTugas.forEach(u => {
+        rows.push([j.nama, u.uraian, u.hasilKerja, u.waktuPenyelesaian, u.bebanKerja]);
+      });
+    });
+    exportCSV(headers, rows, 'data_uraian_tugas.csv');
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onUpdateSettings({
       wkeTahunan: Number(wke),
       namaInstansi: namaInstansi,
       alamat: alamat || undefined,
-      kelasPengadilan: kelasPengadilan
+      kelasPengadilan: kelasPengadilan,
+      teamMembers: teamMembers
     });
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 3000);
@@ -175,7 +210,6 @@ export default function SettingsTab({
                 onChange={(e) => setKelasPengadilan(e.target.value as any)}
                 className="w-full text-sm px-3.5 py-2.5 border border-slate-300 rounded-lg focus:outline-none bg-white font-semibold"
               >
-                <option value="IA Khusus">Pengadilan Agama Kelas IA Khusus</option>
                 <option value="IA">Pengadilan Agama Kelas IA</option>
                 <option value="IB">Pengadilan Agama Kelas IB</option>
                 <option value="II">Pengadilan Agama Kelas II</option>
@@ -215,7 +249,41 @@ export default function SettingsTab({
         </form>
       </div>
 
-      {/* 2. DATA IMPORT & EXPORT (PORTABILITY PORT) */}
+      {/* NEW: USER MANAGEMENT */}
+      <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
+        <div className="p-5 md:p-6 bg-slate-50 border-b flex items-center gap-2">
+          <Settings className="w-5.5 h-5.5 text-slate-700" />
+          <h3 className="font-sans font-bold text-slate-800 text-sm md:text-base">Manajemen Akses Pengguna</h3>
+        </div>
+        <div className="p-6 md:p-8 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+            <input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="Email Pengguna" className="w-full text-sm px-3.5 py-2.5 border border-slate-300 rounded-lg" />
+            <select value={newRole} onChange={e => setNewRole(e.target.value as UserRole)} className="w-full text-sm px-3.5 py-2.5 border border-slate-300 rounded-lg">
+              <option value="viewer">Viewer</option>
+              <option value="editor">Editor</option>
+              <option value="admin">Admin</option>
+            </select>
+            <button onClick={() => {
+              if (newEmail) {
+                setTeamMembers([...teamMembers, { uid: Date.now().toString(), email: newEmail, role: newRole }]);
+                setNewEmail("");
+              }
+            }} className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition-colors">Tambah Pengguna</button>
+          </div>
+          <table className="w-full text-sm border">
+            <thead><tr className="bg-slate-100 text-slate-600"><th className="p-2 text-left">Email</th><th className="p-2 text-left">Role</th><th className="p-2">Aksi</th></tr></thead>
+            <tbody>
+              {teamMembers.map((m, i) => (
+                <tr key={i} className="border-t">
+                  <td className="p-2">{m.email}</td>
+                  <td className="p-2 uppercase font-bold">{m.role}</td>
+                  <td className="p-2 text-center text-red-500 cursor-pointer" onClick={() => setTeamMembers(teamMembers.filter((_, idx) => idx !== i))}>Hapus</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         
         {/* Export / Wipe data box */}
@@ -236,6 +304,22 @@ export default function SettingsTab({
             >
               <Download className="w-4 h-4 text-cyan-600" /> Ekspor Cadangan Institusi (.json)
             </button>
+
+            {/* NEW CSV EXPORT BUTTONS */}
+            <div className="grid grid-cols-1 gap-2 pt-2 border-t mt-2">
+              <button
+                onClick={exportJabatanCSV}
+                className="w-full py-2 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs rounded-md border border-emerald-200 flex items-center justify-center gap-2"
+              >
+                <FileCode className="w-4 h-4" /> Ekspor CSV Jabatan
+              </button>
+              <button
+                onClick={exportUraianTugasCSV}
+                className="w-full py-2 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs rounded-md border border-emerald-200 flex items-center justify-center gap-2"
+              >
+                <FileCode className="w-4 h-4" /> Ekspor CSV Uraian Tugas
+              </button>
+            </div>
 
             <div className="border-t pt-3 flex flex-col gap-2.5">
               <button

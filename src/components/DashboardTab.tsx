@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Jabatan, UnitKerja, UserRole } from "../types";
+import { Jabatan, UnitKerja, UserRole, AppSettings } from "../types";
+import { PrintDashboard } from "./PrintDashboard";
 import { 
   Building2, 
   Briefcase, 
@@ -12,9 +13,11 @@ import {
   BarChart4,
   PieChart as PieChartIcon,
   Scaling,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Search
 } from "lucide-react";
 import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 import { 
   ResponsiveContainer, 
   BarChart, 
@@ -168,6 +171,7 @@ interface DashboardTabProps {
   setActiveTab: (tab: string) => void;
   setSelectedJabatanIdForAbk?: (id: string) => void;
   userRole: UserRole;
+  settings: AppSettings;
 }
 
 export default function DashboardTab({ 
@@ -176,20 +180,44 @@ export default function DashboardTab({
   wke, 
   setActiveTab,
   setSelectedJabatanIdForAbk,
-  userRole
+  userRole,
+  settings
 }: DashboardTabProps) {
 
   const [activeChartPerspective, setActiveChartPerspective] = useState<"comparison" | "donut" | "gap">("comparison");
   const [selectedCaseTypeTrend, setSelectedCaseTypeTrend] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isPrinting, setIsPrinting] = useState(false);
 
-  const handleExportPDF = () => {
-    const doc = new jsPDF();
-    doc.text("Laporan Analisis Jabatan & Beban Kerja", 10, 10);
-    doc.text(`Total Unit Kerja: ${totalUnits}`, 10, 20);
-    doc.text(`Total Jabatan: ${totalJabatan}`, 10, 30);
-    doc.text(`Total Pegawai Riil: ${totalPegawaiRiil}`, 10, 40);
-    doc.text(`Total Kebutuhan Formasi: ${totalFormasiBulat}`, 10, 50);
-    doc.save("Ringkasan_Analisis_Beban_Kerja.pdf");
+  const handleExportCleanPDF = async () => {
+    setIsPrinting(true);
+    // Give time to render the print component
+    setTimeout(async () => {
+      const element = document.getElementById('printable-dashboard');
+      if (!element) {
+        setIsPrinting(false);
+        return;
+      }
+
+      // Temporarily remove hidden and print:block classes to capture
+      element.classList.remove('hidden');
+      element.classList.remove('print:block');
+      
+      const canvas = await html2canvas(element, { scale: 2 });
+      
+      // Restore classes
+      element.classList.add('hidden');
+      element.classList.add('print:block');
+      setIsPrinting(false);
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Ringkasan_Analisis_Beban_Kerja_${settings.namaInstansi.replace(/\s+/g, '_')}.pdf`);
+    }, 100);
   };
 
 
@@ -206,6 +234,17 @@ export default function DashboardTab({
     }, 0);
     return sum + jobNeeded;
   }, 0);
+
+  // Calculate total workload (Required Capacity) and Total Available Capacity
+  const totalWorkloadHours = jabatan.reduce((sum, j) => 
+    sum + j.uraianTugas.reduce((tSum, task) => tSum + (task.waktuPenyelesaian * task.bebanKerja), 0), 0
+  );
+  const totalAvailableCapacity = totalPegawaiRiil * wke;
+
+  const workloadChartData = [
+    { name: "Kapasitas Tersedia", value: totalAvailableCapacity, fill: "#10b981" }, // Emerald 500
+    { name: "Beban Kerja", value: totalWorkloadHours, fill: "#f43f5e" } // Rose 500
+  ];
 
   // Round Kebutuhan for individual jobs and sum up, representing the integer ASN formations (Formasi Bulat)
   const totalFormasiBulat = jabatan.reduce((sum, j) => {
@@ -278,14 +317,32 @@ export default function DashboardTab({
               Lihat Rekap Formasi
             </button>
             <button 
-              onClick={handleExportPDF}
+              onClick={handleExportCleanPDF}
               className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-sm transition-all shadow-md uppercase tracking-wider flex items-center gap-2"
             >
               <FileText className="w-3.5 h-3.5" />
-              Export Summary (PDF)
+              {isPrinting ? "Menyiapkan..." : "Export Summary (PDF)"}
             </button>
           </div>
         </div>
+      </div>
+
+      <PrintDashboard 
+        unitKerja={unitKerja}
+        jabatan={jabatan}
+        wke={wke}
+        settings={settings}
+      />
+
+      <div className="flex bg-white border border-slate-200 rounded-lg p-2 items-center shadow-sm">
+        <Search className="w-5 h-5 text-slate-400 mx-3" />
+        <input
+          type="text"
+          placeholder="Cari Jabatan atau Unit Kerja..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full text-sm outline-none px-2 py-2"
+        />
       </div>
 
       {/* Metric Cards Grid - Styled as border-l-4 with solid geometric panels */}
@@ -652,6 +709,27 @@ export default function DashboardTab({
             </div>
           </div>
         </div>
+
+        {/* Workload vs Capacity Comparison Chart */}
+        <div className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm space-y-4">
+          <h4 className="font-sans font-bold text-sm text-slate-800 uppercase tracking-tight border-b pb-3">
+            Analisis Kapasitas vs Beban Kerja (Menit)
+          </h4>
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={workloadChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="name" tick={{ fontSize: 9, fill: "#64748b", fontWeight: "bold" }} stroke="#cbd5e1" />
+                <YAxis tick={{ fontSize: 9, fill: "#64748b" }} stroke="#cbd5e1" />
+                <Tooltip />
+                <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={50} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <p className="text-[10px] text-slate-400 italic leading-relaxed">
+            * Perbandingan total menit kerja yang tersedia (Kapasitas: Pegawai × WKE) dengan total beban kerja seluruh tugas (Menit).
+          </p>
+        </div>
       </div>
 
       {/* CASE TRENDS ANALYTICS FOR HR JUSTIFICATION */}
@@ -829,7 +907,12 @@ export default function DashboardTab({
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {jabatan.map(j => {
+            {jabatan
+              .filter(j => 
+                j.nama.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                unitKerja.find(u => u.id === j.unitKerjaId)?.nama.toLowerCase().includes(searchQuery.toLowerCase())
+              )
+              .map(j => {
               const unit = unitKerja.find(u => u.id === j.unitKerjaId);
               const jobNeeded = j.uraianTugas.reduce((sum, t) => sum + ((t.waktuPenyelesaian * t.bebanKerja) / wke), 0);
               const roundedNeed = Math.round(jobNeeded || 1);

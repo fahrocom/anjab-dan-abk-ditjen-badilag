@@ -12,7 +12,8 @@ import {
   X, 
   FileText, 
   ChevronRight,
-  Info
+  Info,
+  Copy
 } from "lucide-react";
 
 interface AnjabTabProps {
@@ -290,6 +291,29 @@ export default function AnjabTab({
     setIsFormOpen(false);
     setCurrentEditId(null);
     delete (window as any)._tempoAiTasks;
+  };
+
+  const handleDuplicateJabatan = (j: Jabatan) => {
+    const newJabatan: Omit<Jabatan, "id"> = {
+      unitKerjaId: j.unitKerjaId,
+      nama: `Salin - ${j.nama}`,
+      iktisar: j.iktisar,
+      kelasJabatan: j.kelasJabatan,
+      pegawaiRiil: j.pegawaiRiil,
+      kualifikasi: { ...j.kualifikasi, jurusan: [...j.kualifikasi.jurusan] },
+      syaratJabatan: { 
+        ...j.syaratJabatan, 
+        bakatKerja: [...j.syaratJabatan.bakatKerja],
+        temperamenKerja: [...j.syaratJabatan.temperamenKerja],
+        minatKerja: [...j.syaratJabatan.minatKerja],
+        upayaFisik: [...j.syaratJabatan.upayaFisik]
+      },
+      uraianTugas: j.uraianTugas.map((t) => ({
+        ...t,
+        id: `ut-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      }))
+    };
+    onAddJabatan(newJabatan);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -843,6 +867,13 @@ export default function AnjabTab({
                         </td>
                         <td className="py-4 px-6 text-right">
                           <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => handleDuplicateJabatan(j)}
+                              className="p-1.5 hover:bg-emerald-50 text-slate-400 hover:text-emerald-600 rounded-sm border border-emerald-100 bg-white shadow-xs cursor-pointer"
+                              title="Duplikat Jabatan"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
                             <button
                               onClick={() => handleOpenForm(j.id)}
                               className="px-2.5 py-1.5 hover:bg-slate-100 text-slate-700 rounded-sm border border-slate-200 bg-white text-xs font-bold uppercase tracking-wider flex items-center gap-1 transition-all shadow-sm cursor-pointer"

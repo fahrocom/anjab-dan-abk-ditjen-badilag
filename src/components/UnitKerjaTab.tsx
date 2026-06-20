@@ -11,7 +11,7 @@ import {
   Tooltip, 
   Legend 
 } from "recharts";
-import { RELIGIOUS_COURTS_PRESETS, CourtPreset } from "../data/religionCourtsPresets";
+import { CourtPreset } from "../data/religionCourtsPresets";
 
 interface UnitKerjaTabProps {
   unitKerjaList: UnitKerja[];
@@ -125,93 +125,6 @@ export default function UnitKerjaTab({
         )}
       </div>
 
-      {/* PRESET SATUAN KERJA PERADILAN AGAMA */}
-      <div id="religion-courts-presets-panel" className="bg-emerald-50/50 border border-emerald-200/90 rounded-lg p-5 shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-2 border-emerald-200 pb-3">
-          <div className="space-y-0.5">
-            <h3 className="text-sm font-black text-emerald-900 uppercase tracking-tight flex items-center gap-2">
-              <Award className="w-5 h-5 text-emerald-700 font-bold" />
-              Sistem Satuan Kerja &amp; Formasi Resmi Peradilan Agama (Ditjen Badilag)
-            </h3>
-            <p className="text-xs text-emerald-800 leading-normal font-sans">
-              Gunakan preset untuk memuat struktur organisasi unit kerja dan nomenklatur fungsional resmi secara utuh dan terstandar Mahkamah Agung RI.
-            </p>
-          </div>
-          <span className="text-[9px] bg-emerald-100 text-emerald-850 px-2 py-1 rounded-sm font-mono font-bold uppercase tracking-widest self-start sm:self-auto shrink-0 border border-emerald-250 shadow-2xs">
-            PA-MA-RI PRESETS
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-sans">
-          {RELIGIOUS_COURTS_PRESETS.map((preset) => {
-            const numUnits = preset.unitKerjaList.length;
-            const numPositions = preset.jabatanList.length;
-            const totalEmployees = preset.jabatanList.reduce((sum, j) => sum + (j.pegawaiRiil || 0), 0);
-            
-            return (
-              <div 
-                key={preset.id} 
-                className="bg-white border hover:border-emerald-500 rounded-sm p-4 flex flex-col justify-between gap-4 transition-all hover:shadow-xs group"
-              >
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[9px] font-black tracking-widest text-emerald-700 uppercase leading-none px-2 py-0.5 bg-emerald-50 border border-emerald-150 rounded-sm">
-                      {preset.id.startsWith("pa-kelas-") ? "Tingkat Pertama" : preset.id === "pta-bandiing" ? "Tingkat Banding" : "Tingkat Pusat"}
-                    </span>
-                    <Globe className="w-3.5 h-3.5 text-slate-350 group-hover:text-emerald-500" />
-                  </div>
-                  
-                  <h4 className="text-xs font-black text-slate-850 font-sans uppercase tracking-tight transition-colors group-hover:text-emerald-950">
-                    {preset.name}
-                  </h4>
-                  
-                  <p className="text-[11px] text-slate-500 leading-relaxed font-sans">
-                    {preset.description}
-                  </p>
-
-                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-500 font-semibold">
-                    <span className="flex items-center gap-1">
-                      <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                      <strong>{numUnits}</strong> Unit
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Briefcase className="w-3.5 h-3.5 text-slate-400" />
-                      <strong>{numPositions}</strong> Jabatan
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Users className="w-3.5 h-3.5 text-slate-400" />
-                      <strong>{totalEmployees}</strong> Pegawai
-                    </span>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (onLoadPreset) {
-                      if (confirm(`⚠️ PERINGATAN: Memuat preset "${preset.name}" akan mengganti seluruh data Unit Kerja dan Jabatan aktif saat ini dengan standar peradilan agama terpilih. Apakah Anda yakin?`)) {
-                        onLoadPreset(preset);
-                      }
-                    } else {
-                      alert("Preset loader is not connected to root state.");
-                    }
-                  }}
-                  className="w-full py-1.5 bg-slate-905 bg-slate-900 hover:bg-emerald-600 hover:border-emerald-600 text-white hover:text-white rounded-xs font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer text-center"
-                >
-                  Terapkan Preset Struktur
-                </button>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="p-3 bg-emerald-50/70 rounded-sm border border-emerald-200/40 flex items-start gap-2">
-          <HelpCircle className="w-4 h-4 text-emerald-700 mt-0.5 shrink-0" />
-          <p className="text-[10px] text-emerald-850 font-medium leading-relaxed font-sans">
-            <strong>Catatan Struktur:</strong> Penataan Unit Kerja (Satuan Kerja) di atas disinkronisasi sepenuhnya terhadap Peraturan Mahkamah Agung Nomor 7 Tahun 2015 tentang Organisasi dan Tata Kerja Kepaniteraan dan Kesekretariatan Peradilan serta cetak biru pembaruan peradilan Mahkamah Agung RI.
-          </p>
-        </div>
-      </div>
 
       {/* Visual Analytics Block: Bezetting vs Available Positions Chart */}
       {unitKerjaList.length > 0 && (

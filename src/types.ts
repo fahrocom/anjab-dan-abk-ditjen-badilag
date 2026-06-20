@@ -1,5 +1,11 @@
 export type UserRole = "admin" | "editor" | "viewer";
 
+export interface UserRecord {
+  uid: string;
+  email: string;
+  role: UserRole;
+}
+
 export interface UnitKerja {
   id: string;
   nama: string;
@@ -49,7 +55,8 @@ export interface AppSettings {
   namaInstansi: string; // Nama instansi pemerintah, e.g. "Dinas Komunikasi dan Informatika Provinsi Jawa Tengah"
   logoInstansi?: string; // Base64 or URL
   alamat?: string;
-  kelasPengadilan?: "IA Khusus" | "IA" | "IB" | "II" | "Banding" | "Pusat";
+  kelasPengadilan?: "IA" | "IB" | "II" | "Banding" | "Pusat";
+  teamMembers?: UserRecord[];
 }
 
 export interface JenisPerkara {
