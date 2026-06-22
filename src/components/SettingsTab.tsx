@@ -24,6 +24,7 @@ interface SettingsTabProps {
   onWipeData: () => void;
   onImportBackup: (importedJson: string) => boolean;
   onExportBackup: () => void;
+  userRole?: "admin" | "editor" | "viewer";
 }
 
 export default function SettingsTab({
@@ -34,7 +35,8 @@ export default function SettingsTab({
   onResetToMock,
   onWipeData,
   onImportBackup,
-  onExportBackup
+  onExportBackup,
+  userRole = "viewer"
 }: SettingsTabProps) {
   
   // Local states
@@ -321,30 +323,38 @@ export default function SettingsTab({
               </button>
             </div>
 
-            <div className="border-t pt-3 flex flex-col gap-2.5">
-              <button
-                onClick={() => {
-                  if (confirm("⚠️ PERINGATAN VITAL: Menekan tombol ini akan me-load ulang database contoh instansi (Sekretariat, Programmer, Humas) dan menghapus perubahan kustom Anda. Lanjutkan restorasi data contoh?")) {
-                    onResetToMock();
-                    alert("Database instansi Anda berhasil direstorasi ke bentuk data contoh bawaan!");
-                  }
-                }}
-                className="w-full py-2.5 px-4 bg-slate-50 hover:bg-slate-150 text-slate-700 hover:text-slate-800 border font-bold text-xs rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer"
-              >
-                <RotateCcw className="w-4 h-4 text-amber-500" /> Muat Ulang Data Contoh Pemerintah
-              </button>
+            {userRole === "admin" ? (
+              <div className="border-t pt-3 flex flex-col gap-2.5">
+                <button
+                  onClick={() => {
+                    if (confirm("⚠️ PERINGATAN VITAL: Menekan tombol ini akan me-load ulang database contoh instansi (Sekretariat, Programmer, Humas) dan menghapus perubahan kustom Anda. Lanjutkan restorasi data contoh?")) {
+                      onResetToMock();
+                      alert("Database instansi Anda berhasil direstorasi ke bentuk data contoh bawaan!");
+                    }
+                  }}
+                  className="w-full py-2.5 px-4 bg-slate-50 hover:bg-slate-150 text-slate-700 hover:text-slate-800 border font-bold text-xs rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                >
+                  <RotateCcw className="w-4 h-4 text-amber-500" /> Muat Ulang Data Contoh Pemerintah
+                </button>
 
-              <button
-                onClick={() => {
-                  if (confirm("🚨 PERINGATAN HANCURKAN: Tindakan ini TIDAK BISA dibatalkan. Seluruh Unit Kerja, Jabatan, dan perhitungan beban kerja ABK instansi akan TERHAPUS BERSIH. Anda harus menyusunnya dari awal. Lanjutkan hapus permanen?")) {
-                    onWipeData();
-                  }
-                }}
-                className="w-full py-2.5 px-4 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 hover:text-red-850 font-bold text-xs rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer"
-              >
-                <Trash2 className="w-4 h-4" /> Kosongkan Seluruh Database Instansi
-              </button>
-            </div>
+                <button
+                  onClick={() => {
+                    if (confirm("🚨 PERINGATAN HANCURKAN: Tindakan ini TIDAK BISA dibatalkan. Seluruh Unit Kerja, Jabatan, dan perhitungan beban kerja ABK instansi akan TERHAPUS BERSIH. Anda harus menyusunnya dari awal. Lanjutkan hapus permanen?")) {
+                      onWipeData();
+                    }
+                  }}
+                  className="w-full py-2.5 px-4 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 hover:text-red-850 font-bold text-xs rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                >
+                  <Trash2 className="w-4 h-4" /> Kosongkan Seluruh Database Instansi
+                </button>
+              </div>
+            ) : (
+              <div className="border-t pt-3 text-center">
+                <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider py-1.5 select-none">
+                  🔐 Tindakan Administratif (Akses Khusus Admin)
+                </p>
+              </div>
+            )}
           </div>
         </div>
 

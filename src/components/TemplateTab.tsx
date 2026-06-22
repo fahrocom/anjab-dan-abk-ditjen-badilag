@@ -81,31 +81,31 @@ export default function TemplateTab({ unitKerjaList, onAddJabatan }: TemplateTab
       uraianTugas: [
         {
           uraian: "Mengatur, mengoordinasikan, dan memantau status pendaftaran berkas gugatan dan permohonan melalui sistem e-Court",
-          hasilKerja: "Laporan",
+          hasilKerja: "Laporan Analisis Data",
           waktuPenyelesaian: 90,
           bebanKerja: 52
         },
         {
           uraian: "Melakukan verifikasi, otentikasi data, dan menandatangani dokumen Akta Cerai yang telah diterbitkan",
-          hasilKerja: "Dokumen",
+          hasilKerja: "Dokumen Hukum",
           waktuPenyelesaian: 15,
           bebanKerja: 1200
         },
         {
           uraian: "Melakukan supervisi, pengawasan fungsional, dan evaluasi kinerja harian Panitera Pengganti dan Jurusita",
-          hasilKerja: "Kegiatan",
+          hasilKerja: "Laporan Hasil Evaluasi",
           waktuPenyelesaian: 45,
           bebanKerja: 250
         },
         {
           uraian: "Memeriksa dan menyetujui pelaporan keuangan biaya perkara (LIPA-7) secara periodik bulanan",
-          hasilKerja: "Berkas",
+          hasilKerja: "Dokumen Laporan Keuangan",
           waktuPenyelesaian: 120,
           bebanKerja: 12
         },
         {
           uraian: "Memimpin pelaksanaan eksekusi putusan yang sudah berkekuatan hukum tetap (Inkracht)",
-          hasilKerja: "Kegiatan",
+          hasilKerja: "Laporan Eksekusi",
           waktuPenyelesaian: 360,
           bebanKerja: 20
         }
@@ -133,25 +133,25 @@ export default function TemplateTab({ unitKerjaList, onAddJabatan }: TemplateTab
       uraianTugas: [
         {
           uraian: "Mengikuti dan mendampingi Majelis Hakim dalam jalannya persidangan perkara perdata agama (Nikah, Rujuk, Waris, dsb)",
-          hasilKerja: "Kegiatan",
+          hasilKerja: "Catatan Sidang",
           waktuPenyelesaian: 180,
           bebanKerja: 1100
         },
         {
           uraian: "Menulis dan merumuskan Berita Acara Sidang (BAS) pasca persidangan secara sistematis dan autentik",
-          hasilKerja: "Berkas",
+          hasilKerja: "Dokumen BAS",
           waktuPenyelesaian: 120,
           bebanKerja: 1100
         },
         {
           uraian: "Memutakhirkan (input) kalender persidangan, amar putusan, dan riwayat perkara ke dalam database Aplikasi SIPP",
-          hasilKerja: "Laporan",
+          hasilKerja: "Data Entri Sistem",
           waktuPenyelesaian: 15,
           bebanKerja: 1100
         },
         {
           uraian: "Melakukan minutasi berkas perkara pasca putusan dibacakan untuk disiapkan sebagai arsip inkracht",
-          hasilKerja: "Berkas",
+          hasilKerja: "Berkas Minutasi",
           waktuPenyelesaian: 90,
           bebanKerja: 350
         }
@@ -179,27 +179,27 @@ export default function TemplateTab({ unitKerjaList, onAddJabatan }: TemplateTab
       uraianTugas: [
         {
           uraian: "Menyampaikan relaas (surat panggilan sidang) resmi ke domisili tempat tinggal para pihak berperkara",
-          hasilKerja: "Surat",
+          hasilKerja: "Dokumen Relaas Panggilan",
           waktuPenyelesaian: 150,
           bebanKerja: 650
         },
         {
           uraian: "Menyampaikan surat pemberitahuan resmi isi putusan pengadilan kepada pihak yang absens / tidak hadir sidang",
-          hasilKerja: "Surat",
+          hasilKerja: "Dokumen Pemberitahuan",
           waktuPenyelesaian: 150,
           bebanKerja: 180
         },
         {
           uraian: "Melaksanakan pemeriksaan objek sengketa di lapangan (Descente) dan eksekusi sita jaminan bersama Majelis Hakim",
-          hasilKerja: "Kegiatan",
+          hasilKerja: "Laporan Hasil Pemeriksaan",
           waktuPenyelesaian: 360,
           bebanKerja: 24
         },
         {
           uraian: "Menyusun draf dokumen Berita Acara Sita Jaminan atau Berita Acara Sita Eksekusi secara legal formal",
-          hasilKerja: "Dokumen",
-          waktuPenyelesaian: 180,
-          bebanKerja: 24
+          hasilKerja: "Dokumen Berita Acara",
+          waktuPenyelesaian: 120,
+          bebanKerja: 20
         }
       ]
     },

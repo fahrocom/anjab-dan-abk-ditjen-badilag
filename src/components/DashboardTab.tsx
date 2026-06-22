@@ -299,7 +299,7 @@ export default function DashboardTab({
           <h1 className="text-3xl md:text-4xl font-sans font-black tracking-tight text-white">
             Sistem Informasi Analisis Jabatan &amp; Beban Kerja ASN
           </h1>
-          <p className="text-slate-400 text-xs md:text-sm leading-relaxed max-w-2xl">
+          <p className="text-slate-400 text-xs md:text-sm leading-relaxed max-w-2xl hidden">
             Permudah penghitungan formasi ASN, penyusunan peta jabatan, dan analisis beban kerja 
             di lingkungan Mahkamah Agung RI secara akurat, terstruktur, dan otomatis sesuai standar nasional serta ketetapan Sekretariat Mahkamah Agung.
           </p>
@@ -495,7 +495,7 @@ export default function DashboardTab({
               {activeChartPerspective === "comparison" && (
                 <div id="recharts-comparison-view" className="space-y-4">
                   <div className="h-72 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" aspect={1.5}>
                       <BarChart
                         data={unitStats}
                         margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
@@ -535,7 +535,7 @@ export default function DashboardTab({
               {activeChartPerspective === "donut" && (
                 <div id="recharts-proportion-view" className="grid grid-cols-1 md:grid-cols-5 gap-6 items-center">
                   <div className="h-64 col-span-1 md:col-span-2 relative">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" aspect={1.5}>
                       <PieChart>
                         <Pie
                           data={unitStats}
@@ -595,7 +595,7 @@ export default function DashboardTab({
               {activeChartPerspective === "gap" && (
                 <div id="recharts-gap-view" className="space-y-4">
                   <div className="h-72 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" aspect={1.5}>
                       <BarChart
                         data={unitStats}
                         margin={{ top: 15, right: 10, left: -20, bottom: 0 }}
@@ -709,27 +709,6 @@ export default function DashboardTab({
             </div>
           </div>
         </div>
-
-        {/* Workload vs Capacity Comparison Chart */}
-        <div className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm space-y-4">
-          <h4 className="font-sans font-bold text-sm text-slate-800 uppercase tracking-tight border-b pb-3">
-            Analisis Kapasitas vs Beban Kerja (Menit)
-          </h4>
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={workloadChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" tick={{ fontSize: 9, fill: "#64748b", fontWeight: "bold" }} stroke="#cbd5e1" />
-                <YAxis tick={{ fontSize: 9, fill: "#64748b" }} stroke="#cbd5e1" />
-                <Tooltip />
-                <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={50} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-          <p className="text-[10px] text-slate-400 italic leading-relaxed">
-            * Perbandingan total menit kerja yang tersedia (Kapasitas: Pegawai × WKE) dengan total beban kerja seluruh tugas (Menit).
-          </p>
-        </div>
       </div>
 
       {/* CASE TRENDS ANALYTICS FOR HR JUSTIFICATION */}
@@ -817,7 +796,7 @@ export default function DashboardTab({
           {/* Right Column: Line chart visualization (covers 3 grid columns) */}
           <div className="lg:col-span-3 space-y-4">
             <div className="h-80 md:h-96 w-full bg-slate-50/10 border border-slate-200 p-4 pt-6 rounded-sm min-h-[350px]">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" aspect={1.5}>
                 <LineChart data={MONTHLY_TENDENSI_DATA} margin={{ top: 10, right: 20, left: -20, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                   <XAxis 
@@ -895,100 +874,6 @@ export default function DashboardTab({
         </div>
       </div>
 
-      {/* High-workload Positions Alert list */}
-      <div id="workload-overview" className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm space-y-4">
-        <h3 className="text-base font-bold text-slate-800 uppercase tracking-tight">
-          Status Beban Kerja &amp; Kebutuhan Formasi Per Jabatan
-        </h3>
-        
-        {jabatan.length === 0 ? (
-          <div className="text-center py-8 text-xs text-slate-450 border border-dashed rounded-lg bg-slate-50">
-            Belum ada data jabatan terdaftar. Hubungkan unit organisasi kemudian tambahkan jabatan baru.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {jabatan
-              .filter(j => 
-                j.nama.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                unitKerja.find(u => u.id === j.unitKerjaId)?.nama.toLowerCase().includes(searchQuery.toLowerCase())
-              )
-              .map(j => {
-              const unit = unitKerja.find(u => u.id === j.unitKerjaId);
-              const jobNeeded = j.uraianTugas.reduce((sum, t) => sum + ((t.waktuPenyelesaian * t.bebanKerja) / wke), 0);
-              const roundedNeed = Math.round(jobNeeded || 1);
-              const diff = j.pegawaiRiil - roundedNeed;
-              
-              let statusLabel = "";
-              let statusClass = "";
-              let iconElement = null;
-
-              if (diff < 0) {
-                statusLabel = `Kurang ${Math.abs(diff)} Pegawai`;
-                statusClass = "bg-slate-50 border-red-300 text-red-750 border-l-4 border-l-red-500";
-                iconElement = <AlertTriangle className="w-4 h-4 text-red-500" />;
-              } else if (diff > 0) {
-                statusLabel = `Kelebihan ${diff} Pegawai`;
-                statusClass = "bg-slate-50 border-amber-300 text-amber-700 border-l-4 border-l-amber-500";
-                iconElement = <AlertTriangle className="w-4 h-4 text-amber-500" />;
-              } else {
-                statusLabel = "SDM Sesuai Standard";
-                statusClass = "bg-slate-50 border-emerald-350 text-emerald-850 border-l-4 border-l-emerald-500";
-                iconElement = <CheckCircle className="w-4 h-4 text-emerald-500" />;
-              }
-
-              return (
-                <div 
-                  key={j.id} 
-                  className={`border rounded-sm p-4 flex flex-col justify-between space-y-3 transition-colors ${statusClass}`}
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-start justify-between">
-                      <h4 className="font-sans font-bold text-slate-800 text-xs md:text-sm leading-tight truncate max-w-[170px]" title={j.nama}>
-                        {j.nama}
-                      </h4>
-                      <span className="text-[9px] bg-white px-1.5 py-0.5 rounded-sm border font-mono font-bold text-slate-500">
-                        Kelas {j.kelasJabatan}
-                      </span>
-                    </div>
-                    <p className="text-slate-400 text-[10px] truncate uppercase font-bold tracking-wider">
-                      {unit ? unit.nama : "Tanpa Unit Kerja"}
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 text-[10px] border-y border-slate-205/60 py-2 font-mono">
-                    <div>
-                      <span className="text-slate-400 block text-[9px] uppercase font-bold">Bezetting (Riil)</span>
-                      <span className="text-slate-700 font-bold">{j.pegawaiRiil} Orang</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block text-[9px] uppercase font-bold">Fisik ABK</span>
-                      <span className="text-slate-705 font-bold">{jobNeeded.toFixed(2)} ({roundedNeed})</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-1">
-                    <div className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider">
-                      {iconElement}
-                      <span>{statusLabel}</span>
-                    </div>
-                    <button
-                      onClick={() => {
-                        if (setSelectedJabatanIdForAbk) {
-                          setSelectedJabatanIdForAbk(j.id);
-                        }
-                        setActiveTab("abk");
-                      }}
-                      className="text-slate-700 hover:text-white bg-white hover:bg-slate-800 border border-slate-300 hover:border-slate-800 rounded-sm px-2.5 py-1 text-xs font-bold transition-all shadow-2xs"
-                    >
-                      Hitung ABK
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
     </div>
   );
 }

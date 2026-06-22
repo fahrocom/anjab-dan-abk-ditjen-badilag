@@ -11,9 +11,9 @@ interface PrintRecapProps {
 export function PrintRecap({ jabatanList, unitKerjaList, settings, wke }: PrintRecapProps) {
   return (
     <div id="printable-recap" className="hidden print:block p-8 bg-white text-black font-serif text-sm">
-      <div className="text-center mb-6">
-        <h2 className="font-bold text-lg leading-tight">REKAPITULASI ANALISIS JABATAN DAN BEBAN KERJA ASN</h2>
-        <p className="font-bold">{settings.namaInstansi}</p>
+      <div className="text-center mb-6 border-b-4 border-double border-black pb-4">
+        <h2 className="font-bold text-lg leading-tight uppercase">{settings.namaInstansi}</h2>
+        <p className="text-md font-bold uppercase underline">REKAPITULASI ANALISIS JABATAN DAN BEBAN KERJA ASN</p>
       </div>
       
       <table className="w-full border-collapse border border-black mb-6">

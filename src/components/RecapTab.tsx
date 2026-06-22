@@ -3,6 +3,7 @@ import { Jabatan, UnitKerja, AppSettings } from "../types";
 import { PrintRecap } from "./PrintRecap";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
+import "jspdf-autotable";
 import html2canvas from 'html2canvas';
 import { 
   FileText, 
@@ -272,22 +273,52 @@ export default function RecapTab({
     XLSX.writeFile(workbook, `Rekap_Anjab_ABK_${settings.namaInstansi.replace(/\s+/g, '_')}.xlsx`);
   };
 
-  const handleExportPDF = async () => {
-    const element = document.getElementById('printable-recap');
-    if (!element) return;
+  const handleExportPDF = () => {
+    const doc = new jsPDF('p', 'mm', 'a4');
+    
+    // Official styling
+    const pageWidth = doc.internal.pageSize.getWidth();
+    
+    // Header
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text(`LAPORAN ANALISIS JABATAN DAN BEBAN KERJA`, pageWidth / 2, 20, { align: 'center' });
+    doc.setFontSize(12);
+    doc.text(`${settings.namaInstansi.toUpperCase()}`, pageWidth / 2, 28, { align: 'center' });
+    doc.setLineWidth(0.5);
+    doc.line(10, 32, pageWidth - 10, 32);
+    
+    const tableData = filteredJabatans.map((j, index) => {
+        const unit = unitKerjaList.find(u => u.id === j.unitKerjaId);
+        const metrics = getJobAbkMetrics(j);
+        return [
+            index + 1,
+            unit ? unit.nama : "Tanpa Unit",
+            j.nama,
+            j.kelasJabatan,
+            j.pegawaiRiil,
+            metrics.decimal.toFixed(2),
+            metrics.rounded,
+            metrics.diff,
+            metrics.evalStatus
+        ];
+    });
 
-    // Temporarily show the element to capture it
-    element.classList.remove('hidden');
-    const canvas = await html2canvas(element, { scale: 2 });
-    element.classList.add('hidden');
+    (doc as any).autoTable({
+        head: [['No', 'Unit', 'Jabatan', 'Kelas', 'Riil', 'ABK(Dec)', 'Kebutuhan', 'Selisih', 'Evaluasi']],
+        body: tableData,
+        startY: 35,
+        styles: { fontSize: 9, font: "helvetica" },
+        headStyles: { fillColor: [50, 50, 50], textColor: [255, 255, 255] },
+        theme: 'grid'
+    });
     
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-    
-    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-    pdf.save(`Rekap_Anjab_ABK_${settings.namaInstansi.replace(/\s+/g, '_')}.pdf`);
+    // Footer
+    const finalY = (doc as any).lastAutoTable.finalY + 10;
+    doc.setFontSize(10);
+    doc.text(`Dicetak pada: ${new Date().toLocaleDateString()}`, 10, finalY);
+
+    doc.save(`Rekap_ANJAB_ABK_${settings.namaInstansi.replace(/\s+/g, '_')}_RESMI.pdf`);
   };
 
   // Helper trigger browser print dialog with page title override for high quality PDF file-naming
@@ -317,7 +348,8 @@ export default function RecapTab({
   };
 
   return (
-    <div id="recap-tab-container" className="space-y-6 animate-fadeIn text-slate-900 print:hidden">
+    <>
+      <div id="recap-tab-container" className="space-y-6 animate-fadeIn text-slate-900 print:hidden">
       
       {/* 1. VIEW CONTROLLER (DASHBOARD & TAB) */}
       {!printTarget ? (
@@ -335,6 +367,18 @@ export default function RecapTab({
 
             <div className="flex flex-wrap gap-2 pt-1 md:pt-0">
               <button
+                onClick={() => { window.print(); }}
+                className="px-3.5 py-2 border border-slate-300 hover:border-slate-850 rounded-sm text-slate-700 hover:text-slate-900 bg-white font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
+              >
+                <Printer className="w-4 h-4 text-red-600" /> Cetak Laporan Resmi
+              </button>
+              <button
+                onClick={handleExportPDF}
+                className="px-3.5 py-2 border border-slate-300 hover:border-slate-850 rounded-sm text-slate-700 hover:text-slate-900 bg-white font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
+              >
+                <FileCheck className="w-4 h-4 text-sky-600" /> Ekspor PDF
+              </button>
+              <button
                 onClick={handleExportCSV}
                 className="px-3.5 py-2 border border-slate-300 hover:border-slate-850 rounded-sm text-slate-700 hover:text-slate-900 bg-white font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
               >
@@ -350,7 +394,7 @@ export default function RecapTab({
                 onClick={handleExportPDF}
                 className="px-3.5 py-2 border border-slate-300 hover:border-slate-850 rounded-sm text-slate-700 hover:text-slate-900 bg-white font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
               >
-                <FileText className="w-4 h-4 text-red-600" /> Ekspor PDF
+                <FileText className="w-4 h-4 text-red-600" /> Cetak PDF Resmi
               </button>
               <button
                 onClick={() => setPrintTarget({ type: "recap-all" })}
@@ -1311,8 +1355,8 @@ export default function RecapTab({
           </div>
         </div>
       )}
-
-    <PrintRecap jabatanList={filteredJabatans} unitKerjaList={unitKerjaList} settings={settings} wke={wke} />
     </div>
+    <PrintRecap jabatanList={filteredJabatans} unitKerjaList={unitKerjaList} settings={settings} wke={wke} />
+    </>
   );
 }

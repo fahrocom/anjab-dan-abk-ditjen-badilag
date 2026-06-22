@@ -21,7 +21,8 @@ import { auth, saveUserData } from "../lib/firebase";
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
-  signInAnonymously
+  signInAnonymously,
+  sendPasswordResetEmail
 } from "firebase/auth";
 
 interface LoginFrontpageProps {
@@ -32,13 +33,44 @@ interface LoginFrontpageProps {
 
 export default function LoginFrontpage({ onLoginSuccess, syncStatus, systemName }: LoginFrontpageProps) {
   const [isRegistering, setIsRegistering] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordStrength, setPasswordStrength] = useState(0);
   const [namaInstansi, setNamaInstansi] = useState("");
   const [kelasPengadilan, setKelasPengadilan] = useState<"IA Khusus" | "IA" | "IB" | "II">("IA");
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState(false);
+
+  const getPasswordStrength = (val: string) => {
+    if (!val) return 0;
+    if (val.length < 8) return 1;
+    const hasLetter = /[a-zA-Z]/.test(val);
+    const hasDigit = /\d/.test(val);
+    const hasSpecial = /[^A-Za-z0-9]/.test(val);
+    if (hasLetter && hasDigit && hasSpecial) return 3;
+    if (hasLetter && hasDigit) return 2;
+    return 1;
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg(null);
+    setResetSuccess(false);
+    setIsLoading(true);
+
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setResetSuccess(true);
+    } catch (err: any) {
+      console.error(err);
+      setErrorMsg("Gagal mengirim email reset password. Pastikan email terdaftar.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -184,16 +216,11 @@ export default function LoginFrontpage({ onLoginSuccess, syncStatus, systemName 
         {/* Left Side: System Showcase & Rules */}
         <div className="flex-1 space-y-8 max-w-xl lg:max-w-none text-left">
           <div className="space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-950/80 border border-blue-800/60 rounded-full text-blue-300">
-              <Award className="w-4 h-4 text-blue-400" />
-              <span className="text-[10px] font-black tracking-widest uppercase">E-Goverment Portal 2026</span>
-            </div>
+            
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-sans font-black tracking-tight text-white leading-tight">
               Sistem Analisis Jabatan & Beban Kerja Terpadu
             </h2>
-            <p className="text-slate-400 text-sm sm:text-base leading-relaxed">
-              Platform simulasi reguler untuk perhitungan formasi aparatur, analisis butir tugas teknis yustisial, serta korelasi beban kerja berdasarkan akumulasi statistik perkara SIPP di lingkungan peradilan negeri.
-            </p>
+           
           </div>
 
           {/* Quick Metrics Cards */}
@@ -230,27 +257,84 @@ export default function LoginFrontpage({ onLoginSuccess, syncStatus, systemName 
             {/* Design accents */}
             <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-blue-600 via-blue-500 to-emerald-500" />
             
-            <div className="mb-6">
-              <h3 className="text-xl font-black text-white tracking-tight">
-                {isRegistering ? "Pendaftaran Satker Baru" : "Aparatur Otentifikasi"}
-              </h3>
-              <p className="text-xs text-slate-400 mt-1">
-                {isRegistering 
-                  ? "Daftarkan Pengadilan Anda untuk memulai dokumen ANJAB-ABK tersendiri." 
-                  : "Silakan masuk menggunakan kredensial satuan kerja Anda."}
-              </p>
-            </div>
+            {/* Password Reset Modal */}
+            {isForgotPassword && (
+              <div className="absolute inset-0 z-50 bg-slate-950/95 backdrop-blur-sm p-8 flex flex-col justify-center items-center">
+                <div className="w-full max-w-sm space-y-6 animate-fade-in">
+                  <div className="text-center space-y-2">
+                    <KeyRound className="w-12 h-12 text-blue-500 mx-auto" />
+                    <h3 className="text-2xl font-black text-white tracking-tight">Atur Ulang Kata Sandi</h3>
+                    <p className="text-sm text-slate-400">
+                      Masukkan email terdaftar untuk menerima instruksi pemulihan.
+                    </p>
+                  </div>
 
-            {errorMsg && (
-              <div className="mb-5 p-3.5 bg-red-950/50 border border-red-800/80 rounded-sm flex items-start gap-2.5 text-xs text-red-300">
-                <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-                <p className="leading-normal">{errorMsg}</p>
+                  {(errorMsg || resetSuccess) && (
+                    <div className={`p-3.5 ${resetSuccess ? "bg-emerald-950/50 border-emerald-800/80 text-emerald-300" : "bg-red-950/50 border-red-800/80 text-red-300"} border rounded-sm flex items-start gap-2.5 text-xs`}>
+                      <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                      <p className="leading-normal">{resetSuccess ? "Email instruksi reset kata sandi telah dikirim. Harap periksa kotak masuk atau folder spam Anda." : errorMsg}</p>
+                    </div>
+                  )}
+
+                  <form onSubmit={handleForgotPassword} className="space-y-4">
+                    <div className="relative">
+                      <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+                      <input
+                        type="email"
+                        required
+                        placeholder="nama@pengadilan.go.id"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full text-sm bg-slate-900 border border-slate-800 rounded py-2.5 pl-10 pr-3.5 text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none transition-colors font-semibold"
+                      />
+                    </div>
+                     <button 
+                      type="submit" 
+                      disabled={isLoading} 
+                      className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 active:scale-[0.98] text-white rounded text-sm font-bold transition-all disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-blue-950/20"
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Mengirim...</span>
+                        </>
+                      ) : (
+                        <>
+                          <KeyRound className="w-4 h-4" />
+                          <span>Kirim Link Reset Password</span>
+                        </>
+                      )}
+                    </button>
+                    <button type="button" onClick={() => { setIsForgotPassword(false); setErrorMsg(null); setResetSuccess(false); }} className="w-full text-xs text-slate-400 hover:text-slate-200 font-bold underline transition-colors cursor-pointer">Kembali ke Halaman Login</button>
+                  </form>
+                </div>
               </div>
             )}
 
-            <form onSubmit={isRegistering ? handleRegister : handleLogin} className="space-y-4">
+            {!isForgotPassword && (
+              <div className="mb-6">
+                <h3 className="text-xl font-black text-white tracking-tight">
+                  {isRegistering ? "Pendaftaran Satker Baru" : "Aparatur Otentifikasi"}
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  {isRegistering 
+                    ? "Daftarkan Pengadilan Anda untuk memulai dokumen ANJAB-ABK tersendiri." 
+                    : "Silakan masuk menggunakan kredensial satuan kerja Anda."}
+                </p>
+              </div>
+            )}
+
+            {!isForgotPassword && (errorMsg || resetSuccess) && (
+              <div className={`mb-5 p-3.5 ${resetSuccess ? "bg-emerald-950/50 border-emerald-800/80 text-emerald-300" : "bg-red-950/50 border-red-800/80 text-red-300"} border rounded-sm flex items-start gap-2.5 text-xs`}>
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <p className="leading-normal">{resetSuccess ? "Instruksi reset telah dikirim ke email Anda." : errorMsg}</p>
+              </div>
+            )}
+
+            {!isForgotPassword && (
+              <form onSubmit={isRegistering ? handleRegister : isForgotPassword ? handleForgotPassword : handleLogin} className="space-y-4">
               
-              {isRegistering && (
+              {!isForgotPassword && isRegistering && (
                 <>
                   {/* Nama Instansi */}
                   <div className="space-y-1.5">
@@ -282,7 +366,7 @@ export default function LoginFrontpage({ onLoginSuccess, syncStatus, systemName 
                         onChange={(e) => setKelasPengadilan(e.target.value as any)}
                         className="w-full text-sm bg-slate-900 border border-slate-800 rounded-md py-2.5 pl-10 pr-3.5 text-white focus:outline-none focus:border-blue-500 transition-colors font-semibold appearance-none"
                       >
-                        <option value="IA Khusus">Kelas IA Khusus</option>
+                        
                         <option value="IA">Kelas IA</option>
                         <option value="IB">Kelas IB</option>
                         <option value="II">Kelas II</option>
@@ -310,32 +394,59 @@ export default function LoginFrontpage({ onLoginSuccess, syncStatus, systemName 
                 </div>
               </div>
 
-              {/* Password */}
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center">
-                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-                    Kata Sandi / Password
-                  </label>
-                </div>
-                <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    required
-                    placeholder="Masukkan password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full text-sm bg-slate-900 border border-slate-800 rounded-md py-2.5 pl-10 pr-10 text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors font-semibold"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-3.5 text-slate-550 hover:text-slate-300 focus:outline-none cursor-pointer"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
+              {!isForgotPassword && (
+                <>
+                  {/* Password */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                        Kata Sandi / Password
+                      </label>
+                    </div>
+                    <div className="relative">
+                      <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        required={!isForgotPassword}
+                        placeholder="Masukkan password"
+                        value={password}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setPassword(val);
+                          setPasswordStrength(getPasswordStrength(val));
+                        }}
+                        className="w-full text-sm bg-slate-900 border border-slate-800 rounded-md py-2.5 pl-10 pr-10 text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors font-semibold"
+                      />
+                      {isRegistering && password.length > 0 && (
+                        <div className="flex gap-1 h-1 px-1">
+                          {[1, 2, 3].map((lvl) => (
+                            <div 
+                              key={lvl} 
+                              className={`h-full flex-1 rounded-full transition-colors ${
+                                passwordStrength >= lvl 
+                                  ? (passwordStrength === 1 ? 'bg-red-500' : passwordStrength === 2 ? 'bg-amber-500' : 'bg-emerald-500') 
+                                  : 'bg-slate-700'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      )}
+                      {isRegistering && (
+                        <div className="text-[10px] text-slate-500 mt-1.5 pl-1.5">
+                          <p>Password minimal 8 karakter, harap sertakan minimal satu huruf dan satu angka.</p>
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-3.5 text-slate-550 hover:text-slate-300 focus:outline-none cursor-pointer"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* Action Button */}
               <button
@@ -347,85 +458,43 @@ export default function LoginFrontpage({ onLoginSuccess, syncStatus, systemName 
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <>
-                    <span>{isRegistering ? "DAFTAR SATKER baru" : "MASUK KE DASHBOARD"}</span>
-                    <ArrowRight className="w-4 h-4" />
+                    <span>{isRegistering ? "DAFTAR SATKER baru" : isForgotPassword ? "KIRIM PETUNJUK RESET" : "MASUK KE DASHBOARD"}</span>
+                    {!isForgotPassword && <ArrowRight className="w-4 h-4" />}
                   </>
                 )}
               </button>
             </form>
+            )}
 
-            {/* Shift modes */}
-            <div className="mt-4 text-center">
+            <div className="mt-6 flex flex-col gap-3 items-center justify-center">
               <button
                 type="button"
                 onClick={() => {
                   setIsRegistering(!isRegistering);
                   setErrorMsg(null);
+                  setResetSuccess(false);
                 }}
                 className="text-xs text-blue-400 hover:text-blue-300 font-bold transition-colors underline decoration-dotted bg-transparent border-none cursor-pointer focus:outline-none"
               >
-                {isRegistering ? "Sudah punya akun? Masuk disini" : "Pendaftaran Pengadilan / Satker Baru"}
+                {isRegistering 
+                  ? "Sudah punya akun? Masuk disini" 
+                  : "Pendaftaran Pengadilan / Satker Baru"}
               </button>
-            </div>
 
-            {/* Divider OR info */}
-            <div className="relative my-5">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-850" />
-              </div>
-              <div className="relative flex justify-center text-[9px] uppercase tracking-widest font-black">
-                <span className="bg-slate-950 px-3 text-slate-500">ATAU LOGIN TAMU</span>
-              </div>
-            </div>
-
-            {/* Guest Action Panel */}
-            <button
-              onClick={handleGuestLogin}
-              disabled={isLoading}
-              className="w-full py-2.5 bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 text-slate-200 rounded-md text-xs font-bold flex items-center justify-center gap-2 tracking-wide cursor-pointer transition-all"
-            >
-              <Users className="w-4 h-4 text-slate-400" />
-              <span>MASUK SEBAGAI TAMU / SIMULASI</span>
-            </button>
-
-            {/* Demo Accounts Panel */}
-            <div className="mt-5 p-3.5 bg-slate-900/40 border border-slate-850/80 rounded">
-              <p className="text-[10px] font-black tracking-widest text-slate-500 uppercase">AKUN UJI COBA CEPAT</p>
-              <div className="flex flex-wrap gap-2 mt-2">
+              {!isRegistering && (
                 <button
-                  onClick={() => useDemoAccount("admin@anjab.id")}
-                  className="px-2 py-1 bg-slate-900 hover:bg-slate-850 border border-slate-800 text-[10px] text-blue-300 font-bold rounded cursor-pointer leading-tight transition-all active:scale-95"
+                  type="button"
+                  onClick={() => {
+                    setIsForgotPassword(true);
+                    setErrorMsg(null);
+                    setResetSuccess(false);
+                  }}
+                  className="text-xs text-slate-450 hover:text-slate-200 transition-colors bg-transparent border-none cursor-pointer focus:outline-none flex items-center gap-1.5 font-medium"
                 >
-                  PA IA Khusus
+                  <KeyRound className="w-3.5 h-3.5 text-blue-500" />
+                  <span>Lupa Password? Atur Ulang Disini</span>
                 </button>
-                <button
-                  onClick={() => useDemoAccount("pekannbaru@pengadilan.go.id")}
-                  className="px-2 py-1 bg-slate-900 hover:bg-slate-850 border border-slate-800 text-[10px] text-emerald-300 font-bold rounded cursor-pointer leading-tight transition-all active:scale-95"
-                >
-                  PA Pekanbaru IB
-                </button>
-              </div>
-              <p className="text-[9px] text-slate-550 mt-1.5 leading-tight">
-                Gunakan akun uji coba cepat di atas dengan kata sandi <code className="text-amber-500">admin123</code> untuk menguji lingkungan kerja rujukan langsung.
-              </p>
-            </div>
-
-            {/* Database status banner */}
-            <div className="mt-5 border-t border-slate-900 pt-4 flex items-center justify-between text-[10px] text-slate-500">
-              <span className="flex items-center gap-1">
-                <Cloud className="w-3.5 h-3.5 text-blue-500" /> Status Database:
-              </span>
-              <span className="font-bold text-slate-400 capitalize flex items-center gap-1">
-                {syncStatus === "synced" ? (
-                  <>
-                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> Cloud Connected
-                  </>
-                ) : (
-                  <>
-                    <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" /> Local Sandbox Sync
-                  </>
-                )}
-              </span>
+              )}
             </div>
 
           </div>

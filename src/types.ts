@@ -48,6 +48,9 @@ export interface Jabatan {
   kualifikasi: Kualifikasi;
   uraianTugas: UraianTugas[];
   syaratJabatan: SyaratJabatan;
+  tanggungJawab?: string[];
+  wewenang?: string[];
+  perangkatKerja?: string[];
 }
 
 export interface AppSettings {

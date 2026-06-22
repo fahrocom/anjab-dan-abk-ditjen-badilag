@@ -13,7 +13,10 @@ import {
   ListVideo,
   X,
   Info,
-  Sliders
+  Sliders,
+  AlertTriangle,
+  CheckCircle,
+  Search
 } from "lucide-react";
 
 interface AbkTabProps {
@@ -23,6 +26,7 @@ interface AbkTabProps {
   onUpdateTasks: (jabatanId: string, tasks: UraianTugas[]) => void;
   selectedJabatanIdForAbk?: string;
   setSelectedJabatanIdForAbk?: (id: string | undefined) => void;
+  userRole: "admin" | "editor" | "viewer";
 }
 
 export default function AbkTab({
@@ -31,7 +35,8 @@ export default function AbkTab({
   wkeTahunan,
   onUpdateTasks,
   selectedJabatanIdForAbk,
-  setSelectedJabatanIdForAbk
+  setSelectedJabatanIdForAbk,
+  userRole
 }: AbkTabProps) {
   
   // Local active selection
@@ -39,6 +44,8 @@ export default function AbkTab({
   
   const selectedJabatan = jabatanList.find(j => j.id === activeJabId);
   const selectedUnit = selectedJabatan ? unitKerjaList.find(u => u.id === selectedJabatan.unitKerjaId) : null;
+  
+  const [abkSearchQuery, setAbkSearchQuery] = useState("");
   
   // Inline/Form state for adding custom tasks
   const [isAddingTask, setIsAddingTask] = useState(false);
@@ -54,9 +61,11 @@ export default function AbkTab({
   const [editWaktu, setEditWaktu] = useState(120);
   const [editBeban, setEditBeban] = useState(100);
 
+  const isReadOnly = userRole === 'viewer';
+
   const handleAddTask = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedJabatan || !newUraian.trim()) return;
+    if (isReadOnly || !selectedJabatan || !newUraian.trim()) return;
 
     const newTask: UraianTugas = {
       id: `ut-${Date.now()}`,
@@ -77,6 +86,7 @@ export default function AbkTab({
   };
 
   const handleStartEditTask = (task: UraianTugas) => {
+    if (isReadOnly) return;
     setEditingTaskId(task.id);
     setEditUraian(task.uraian);
     setEditHasilKerja(task.hasilKerja);
@@ -85,7 +95,7 @@ export default function AbkTab({
   };
 
   const handleSaveEditTask = (taskId: string) => {
-    if (!selectedJabatan || !editUraian.trim()) return;
+    if (isReadOnly || !selectedJabatan || !editUraian.trim()) return;
 
     const updatedTasks = selectedJabatan.uraianTugas.map(t => {
       if (t.id === taskId) {
@@ -105,7 +115,7 @@ export default function AbkTab({
   };
 
   const handleDeleteTask = (taskId: string) => {
-    if (!selectedJabatan) return;
+    if (isReadOnly || !selectedJabatan) return;
     const filteredTasks = selectedJabatan.uraianTugas.filter(t => t.id !== taskId);
     onUpdateTasks(selectedJabatan.id, filteredTasks);
   };
@@ -189,7 +199,7 @@ export default function AbkTab({
                   <span className="font-bold text-white">{totalWaktuBebanMenit.toLocaleString()} mnt/thn</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-450">WKE Pemda:</span>
+                  <span className="text-slate-450">WKE:</span>
                   <span className="font-bold text-slate-300">{wkeTahunan.toLocaleString()} mnt</span>
                 </div>
                 <div className="flex justify-between pt-2 border-t border-slate-800">
@@ -249,7 +259,10 @@ export default function AbkTab({
               {!isAddingTask && (
                 <button
                   onClick={() => setIsAddingTask(true)}
-                  className="px-3 py-1.5 border border-slate-300 hover:border-slate-800 rounded-sm text-slate-700 hover:text-slate-900 font-bold text-xs uppercase tracking-wider transition-colors flex items-center gap-1 focus:outline-none cursor-pointer bg-slate-50"
+                  disabled={isReadOnly}
+                  className={`px-3 py-1.5 border hover:border-slate-800 rounded-sm font-bold text-xs uppercase tracking-wider transition-colors flex items-center gap-1 focus:outline-none cursor-pointer ${
+                    isReadOnly ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed" : "border-slate-300 text-slate-700 hover:text-slate-900 bg-slate-50"
+                  }`}
                 >
                   <Plus className="w-3.5 h-3.5" /> Tambah Uraian Tugas
                 </button>
@@ -493,6 +506,137 @@ export default function AbkTab({
               </div>
             </div>
             
+          </div>
+        </div>
+      )}
+
+      {/* High-workload Positions Alert list */}
+      {jabatanList.length > 0 && (
+        <div id="workload-overview" className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm space-y-4 mt-8 text-slate-900">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
+            <div>
+              <h3 className="text-base font-bold text-slate-805 uppercase tracking-tight">
+                Status Beban Kerja &amp; Kebutuhan Formasi Per Jabatan
+              </h3>
+              <p className="text-slate-400 text-[11px] font-semibold mt-0.5">
+                Gunakan daftar berikut untuk beralih menghitung dan menyusun rincian uraian tugas butir kegiatan jabatan.
+              </p>
+            </div>
+            
+            {/* Search Input */}
+            <div className="flex items-center bg-slate-50 border border-slate-250 p-1.5 rounded-sm text-xs leading-none max-w-xs w-full">
+              <Search className="w-4 h-4 text-slate-400 mx-2 font-black" />
+              <input
+                type="text"
+                placeholder="Cari Jabatan / Bidang..."
+                value={abkSearchQuery}
+                onChange={(e) => setAbkSearchQuery(e.target.value)}
+                className="w-full bg-transparent outline-none py-1 px-1 font-semibold placeholder-slate-400 text-slate-700"
+              />
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {jabatanList
+              .filter(j => 
+                j.nama.toLowerCase().includes(abkSearchQuery.toLowerCase()) || 
+                unitKerjaList.find(u => u.id === j.unitKerjaId)?.nama.toLowerCase().includes(abkSearchQuery.toLowerCase())
+              )
+              .map(j => {
+              const unit = unitKerjaList.find(u => u.id === j.unitKerjaId);
+              const jobNeeded = j.uraianTugas.reduce((sum, t) => sum + ((t.waktuPenyelesaian * t.bebanKerja) / wkeTahunan), 0);
+              const roundedNeed = Math.round(jobNeeded || 1);
+              const diff = j.pegawaiRiil - roundedNeed;
+              const isCurrent = j.id === activeJabId;
+              
+              let statusLabel = "";
+              let statusClass = "";
+              let iconElement = null;
+
+              if (diff < 0) {
+                statusLabel = `Kurang ${Math.abs(diff)} Pegawai`;
+                statusClass = "border-red-300 text-red-750 border-l-4 border-l-red-500 bg-slate-50";
+                iconElement = <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />;
+              } else if (diff > 0) {
+                statusLabel = `Kelebihan ${diff} Pegawai`;
+                statusClass = "border-amber-300 text-amber-700 border-l-4 border-l-amber-500 bg-slate-50";
+                iconElement = <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />;
+              } else {
+                statusLabel = "SDM Sesuai Standard";
+                statusClass = "border-emerald-350 text-emerald-850 border-l-4 border-l-emerald-500 bg-slate-50";
+                iconElement = <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />;
+              }
+
+              return (
+                <div 
+                  key={j.id} 
+                  className={`border rounded-sm p-4 flex flex-col justify-between space-y-3 transition-all duration-200 ${
+                    isCurrent 
+                      ? "ring-2 ring-blue-600 border-blue-600 scale-[1.01] shadow-md bg-blue-50/10" 
+                      : `${statusClass} hover:border-slate-450 hover:shadow-2xs`
+                  }`}
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-start justify-between gap-1">
+                      <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                        <h4 className="font-sans font-bold text-slate-800 text-xs md:text-sm leading-tight truncate" title={j.nama}>
+                          {j.nama}
+                        </h4>
+                        {isCurrent && (
+                          <span className="shrink-0 bg-blue-600 text-white text-[8px] font-mono px-1.5 py-0.5 rounded-sm uppercase tracking-wider font-extrabold select-none">
+                            Diedit
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[9px] bg-white px-1.5 py-0.5 rounded-sm border font-mono font-bold text-slate-500 shrink-0">
+                        Kelas {j.kelasJabatan}
+                      </span>
+                    </div>
+                    <p className="text-slate-400 text-[10px] truncate uppercase font-bold tracking-wider">
+                      {unit ? unit.nama : "Tanpa Unit Kerja"}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-[10px] border-y border-slate-205/60 py-2 font-mono">
+                    <div>
+                      <span className="text-slate-400 block text-[9px] uppercase font-bold">Bezetting (Riil)</span>
+                      <span className="text-slate-705 font-bold">{j.pegawaiRiil} Orang</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[9px] uppercase font-bold">Fisik ABK</span>
+                      <span className="text-slate-705 font-bold">{jobNeeded.toFixed(2)} ({roundedNeed})</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1 gap-2">
+                    <div className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider min-w-0">
+                      {iconElement}
+                      <span className="truncate">{statusLabel}</span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (setSelectedJabatanIdForAbk) {
+                          setSelectedJabatanIdForAbk(j.id);
+                        }
+                        const container = document.getElementById("abk-tab-container");
+                        if (container) {
+                          container.scrollIntoView({ behavior: "smooth" });
+                        } else {
+                          window.scrollTo({ top: 0, behavior: "smooth" });
+                        }
+                      }}
+                      className={`px-2.5 py-1 text-xs font-bold transition-all shadow-2xs rounded-sm cursor-pointer shrink-0 ${
+                        isCurrent
+                          ? "bg-blue-600 text-white border border-blue-600 hover:bg-blue-700 hover:border-blue-700"
+                          : "text-slate-705 hover:text-white bg-white hover:bg-slate-805 border border-slate-300 hover:border-slate-805"
+                      }`}
+                    >
+                      {isCurrent ? "Ubah Tugas" : "Hitung ABK"}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

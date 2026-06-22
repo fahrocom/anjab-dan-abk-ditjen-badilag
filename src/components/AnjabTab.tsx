@@ -22,6 +22,7 @@ interface AnjabTabProps {
   onAddJabatan: (jabatan: Omit<Jabatan, "id">) => void;
   onUpdateJabatan: (id: string, jabatan: Partial<Jabatan>) => void;
   onDeleteJabatan: (id: string) => void;
+  userRole: "admin" | "editor" | "viewer";
 }
 
 const BAKAT_OPTIONS = [
@@ -67,7 +68,8 @@ export default function AnjabTab({
   unitKerjaList,
   onAddJabatan,
   onUpdateJabatan,
-  onDeleteJabatan
+  onDeleteJabatan,
+  userRole
 }: AnjabTabProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedUnitFilter, setSelectedUnitFilter] = useState("all");
@@ -102,6 +104,12 @@ export default function AnjabTab({
   const [minatKerja, setMinatKerja] = useState<string[]>([]);
   const [upayaFisik, setUpayaFisik] = useState<string[]>([]);
   const [kondisiFisik, setKondisiFisik] = useState("Sehat Jasmani dan Rohani");
+  const [tanggungJawab, setTanggungJawab] = useState<string[]>([]);
+  const [newTanggungJawab, setNewTanggungJawab] = useState("");
+  const [wewenang, setWewenang] = useState<string[]>([]);
+  const [newWewenang, setNewWewenang] = useState("");
+  const [perangkatKerja, setPerangkatKerja] = useState<string[]>([]);
+  const [newPerangkatKerja, setNewPerangkatKerja] = useState("");
 
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState("");
@@ -239,6 +247,8 @@ export default function AnjabTab({
     ];
   };
 
+  const isReadOnly = userRole === 'viewer';
+
   const handleOpenForm = (id: string | null) => {
     if (!unitKerjaId && unitKerjaList.length > 0) {
       setUnitKerjaId(unitKerjaList[0].id);
@@ -264,6 +274,9 @@ export default function AnjabTab({
         setMinatKerja(j.syaratJabatan.minatKerja);
         setUpayaFisik(j.syaratJabatan.upayaFisik);
         setKondisiFisik(j.syaratJabatan.kondisiFisik);
+        setTanggungJawab(j.tanggungJawab || []);
+        setWewenang(j.wewenang || []);
+        setPerangkatKerja(j.perangkatKerja || []);
       }
     } else {
       setCurrentEditId(null);
@@ -282,6 +295,9 @@ export default function AnjabTab({
       setMinatKerja([]);
       setUpayaFisik(["Duduk", "Melihat"]);
       setKondisiFisik("Sehat Jasmani dan Rohani");
+      setTanggungJawab([]);
+      setWewenang([]);
+      setPerangkatKerja([]);
     }
     setIsFormOpen(true);
     setAiError("");
@@ -359,6 +375,9 @@ export default function AnjabTab({
         pegawaiRiil: Number(pegawaiRiil),
         kualifikasi,
         syaratJabatan,
+        tanggungJawab,
+        wewenang,
+        perangkatKerja,
         uraianTugas: finalUraianTasks
       });
     } else {
@@ -370,6 +389,9 @@ export default function AnjabTab({
         pegawaiRiil: Number(pegawaiRiil),
         kualifikasi,
         syaratJabatan,
+        tanggungJawab,
+        wewenang,
+        perangkatKerja,
         uraianTugas: finalUraianTasks
       });
     }
@@ -436,9 +458,10 @@ export default function AnjabTab({
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-8 divide-y divide-slate-100 text-slate-800">
-            {/* SECTION: Uraian Tugas (NEW) */}
-            <div className="space-y-4">
-              <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest flex items-center gap-1.5 pb-2 border-b border-slate-205">
+            <fieldset disabled={isReadOnly}>
+              {/* SECTION: Uraian Tugas (NEW) */}
+              <div className="space-y-4">
+                <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest flex items-center gap-1.5 pb-2 border-b border-slate-205">
                 <ChevronRight className="w-4 h-4 text-blue-600" /> Metode Kerja & Uraian Tugas
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
@@ -448,7 +471,20 @@ export default function AnjabTab({
                 </div>
                 <div className="md:col-span-3">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Satuan Hasil</label>
-                  <input type="text" value={newHasilKerja} onChange={e => setNewHasilKerja(e.target.value)} className="w-full text-xs px-3 py-2 border border-slate-300 rounded-sm" />
+                  <select 
+                    value={newHasilKerja} 
+                    onChange={e => setNewHasilKerja(e.target.value)} 
+                    className="w-full text-xs px-3 py-2 border border-slate-300 rounded-sm bg-white"
+                  >
+                    <option value="Laporan">Laporan</option>
+                    <option value="Dokumen">Dokumen</option>
+                    <option value="Kegiatan">Kegiatan</option>
+                    <option value="Berkas">Berkas</option>
+                    <option value="Surat">Surat</option>
+                    <option value="Naskah">Naskah</option>
+                    <option value="Aplikasi">Aplikasi</option>
+                    <option value="Data">Data</option>
+                  </select>
                 </div>
                 <div className="md:col-span-2">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Waktu (menit)</label>
@@ -749,6 +785,78 @@ export default function AnjabTab({
                 </div>
               </div>
             </div>
+
+            {/* SECTION 4: Tanggung Jawab & Wewenang */}
+            <div className="space-y-6 pt-6 border-t border-slate-200">
+              <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest flex items-center gap-1.5 pb-2 border-b border-slate-200">
+                <ChevronRight className="w-4 h-4 text-blue-600" /> D. Tanggung Jawab & Wewenang Jabatan
+              </h4>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Tanggung Jawab</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      className="flex-1 text-xs px-3 py-2 border border-slate-300 rounded-sm"
+                      value={newTanggungJawab}
+                      onChange={e => setNewTanggungJawab(e.target.value)}
+                    />
+                    <button type="button" onClick={() => { if(newTanggungJawab) { setTanggungJawab([...tanggungJawab, newTanggungJawab]); setNewTanggungJawab(""); }}} className="px-3 py-2 bg-slate-100 border border-slate-300 text-slate-700 font-bold text-xs uppercase cursor-pointer">Add</button>
+                  </div>
+                  <ul className="text-xs list-disc pl-4 space-y-1 mt-2 text-slate-600">
+                    {tanggungJawab.map((item, i) => <li key={i}>{item}</li>)}
+                  </ul>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Wewenang</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      className="flex-1 text-xs px-3 py-2 border border-slate-300 rounded-sm"
+                      value={newWewenang}
+                      onChange={e => setNewWewenang(e.target.value)}
+                    />
+                    <button type="button" onClick={() => { if(newWewenang) { setWewenang([...wewenang, newWewenang]); setNewWewenang(""); }}} className="px-3 py-2 bg-slate-100 border border-slate-300 text-slate-700 font-bold text-xs uppercase cursor-pointer">Add</button>
+                  </div>
+                  <ul className="text-xs list-disc pl-4 space-y-1 mt-2 text-slate-600">
+                    {wewenang.map((item, i) => <li key={i}>{item}</li>)}
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* SECTION 5: Perangkat Kerja */}
+            <div className="space-y-4 pt-6 border-t border-slate-200">
+              <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest flex items-center gap-1.5 pb-2 border-b border-slate-200">
+                <ChevronRight className="w-4 h-4 text-blue-600" /> E. Perangkat Kerja
+              </h4>
+
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  className="flex-1 text-xs px-3 py-2 border border-slate-300 rounded-sm"
+                  placeholder="Masukkan nama perangkat..."
+                  value={newPerangkatKerja}
+                  onChange={e => setNewPerangkatKerja(e.target.value)}
+                />
+                <button type="button" onClick={() => { if(newPerangkatKerja) { setPerangkatKerja([...perangkatKerja, newPerangkatKerja]); setNewPerangkatKerja(""); }}} className="px-3 py-2 bg-slate-100 border border-slate-300 text-slate-700 font-bold text-xs uppercase cursor-pointer">Tambahkan</button>
+              </div>
+              <table className="w-full text-xs mt-2 border border-slate-200">
+                <thead className="bg-slate-50 text-slate-500">
+                  <tr><th className="p-2 border-r text-left">Nama Perangkat</th><th className="p-2 text-center w-20">Aksi</th></tr>
+                </thead>
+                <tbody className="divide-y">
+                  {perangkatKerja.map((item, i) => (
+                    <tr key={i}>
+                      <td className="p-2 border-r">{item}</td>
+                      <td className="p-2 text-center text-red-500 cursor-pointer" onClick={() => setPerangkatKerja(perangkatKerja.filter((_, idx) => idx !== i))}>Hapus</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            </fieldset>
 
             {/* FOOTER ACTION BUTTONS */}
             <div className="pt-6 border-t md:col-span-2 flex justify-between items-center gap-3 bg-slate-55 p-4 -mx-6 md:-mx-8">

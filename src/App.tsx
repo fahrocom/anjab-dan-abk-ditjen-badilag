@@ -7,11 +7,11 @@ import {
   mockJenisPerkara,
   mockDataPerkara
 } from "./data/mockData";
-import { CourtPreset } from "./data/religionCourtsPresets";
 
 // Firebase imports
-import { auth, saveUserData, getUserData } from "./lib/firebase";
+import { auth, saveUserData, getUserData, db } from "./lib/firebase";
 import { signInAnonymously, onAuthStateChanged, User, signOut } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
 
 // Tabs
 import DashboardTab from "./components/DashboardTab";
@@ -21,6 +21,7 @@ import AbkTab from "./components/AbkTab";
 import RecapTab from "./components/RecapTab";
 import TemplateTab from "./components/TemplateTab";
 import SettingsTab from "./components/SettingsTab";
+import UserTab from "./components/UserTab";
 import PerkaraTab from "./components/PerkaraTab";
 import LoginFrontpage from "./components/LoginFrontpage";
 
@@ -40,7 +41,8 @@ import {
   CloudOff,
   RefreshCw,
   Loader2,
-  LogOut
+  LogOut,
+  User as UserIcon
 } from "lucide-react";
 
 export default function App() {
@@ -128,6 +130,11 @@ export default function App() {
     setSyncStatus("syncing");
     try {
         const cloudData = await getUserData(uid);
+        const currentEmail = auth.currentUser?.email;
+        const isAdminEmail = currentEmail === "kingzaldins@gmail.com";
+        const isEditorEmail = currentEmail?.toLowerCase() === "subditpengembangan.badilag@gmail.com";
+        const finalRole = isAdminEmail ? "admin" : (isEditorEmail ? "editor" : (cloudData?.role || "viewer"));
+
         if (cloudData) {
           // Document exists! Load state variables
           if (cloudData.settings) setSettings(cloudData.settings);
@@ -135,7 +142,15 @@ export default function App() {
           if (cloudData.jabatan) setJabatan(cloudData.jabatan);
           if (cloudData.jenisPerkaraList) setJenisPerkaraList(cloudData.jenisPerkaraList);
           if (cloudData.dataPerkaraList) setDataPerkaraList(cloudData.dataPerkaraList);
-          if (cloudData.role) setUserRole(cloudData.role);
+          setUserRole(finalRole);
+          
+          if ((isAdminEmail && cloudData.role !== "admin") || (isEditorEmail && cloudData.role !== "editor")) {
+            // Also update the database document's role
+            await saveUserData(uid, {
+              ...cloudData,
+              role: finalRole
+            });
+          }
         } else {
           // New user document registry, save current memory representation
           await saveUserData(uid, {
@@ -144,10 +159,20 @@ export default function App() {
             jabatan,
             jenisPerkaraList,
             dataPerkaraList,
-            role: "viewer"
+            role: finalRole
           });
-          setUserRole("viewer");
+          setUserRole(finalRole);
         }
+
+        // Ensure there is a record in the 'users' collection with the correct role!
+        if (currentEmail) {
+          const userDocRef = doc(db, "users", uid);
+          await setDoc(userDocRef, {
+            email: currentEmail,
+            role: finalRole
+          }, { merge: true });
+        }
+
         setSyncStatus("synced");
     } catch (error) {
         console.error("Failed to fetch/register cloud document:", error);
@@ -259,26 +284,6 @@ export default function App() {
     setJenisPerkaraList(mockJenisPerkara);
     setDataPerkaraList(mockDataPerkara);
     setActiveTab("dashboard");
-  };
-
-  const handleLoadPreset = (preset: CourtPreset) => {
-    let kelasSet: "IA Khusus" | "IA" | "IB" | "II" | "Banding" | "Pusat" = "IA";
-    if (preset.id === "pa-kelas-ia-khusus") kelasSet = "IA Khusus";
-    else if (preset.id === "pa-kelas-ia") kelasSet = "IA";
-    else if (preset.id === "pa-kelas-ib") kelasSet = "IB";
-    else if (preset.id === "pa-kelas-ii") kelasSet = "II";
-    else if (preset.id === "pta-bandiing") kelasSet = "Banding";
-    else if (preset.id === "ditjen-badilag-pusat") kelasSet = "Pusat";
-
-    setSettings({
-      ...settings,
-      namaInstansi: preset.instansiName,
-      alamat: preset.alamatInstansi,
-      kelasPengadilan: kelasSet
-    });
-    setUnitKerja(preset.unitKerjaList);
-    setJabatan(preset.jabatanList);
-    setActiveTab("unit");
   };
 
   const handleWipeData = () => {
@@ -409,11 +414,6 @@ export default function App() {
               {settings.namaInstansi}
             </p>
           </div>
-          {settings.kelasPengadilan && (
-            <span className="inline-flex text-[9px] font-black bg-blue-900/60 border border-blue-700 text-blue-250 px-2 py-0.5 rounded-sm uppercase tracking-wider">
-              Kelas {settings.kelasPengadilan}
-            </span>
-          )}
         </div>
 
         {/* Navigation Groups */}
@@ -522,6 +522,19 @@ export default function App() {
               <p className="px-2 text-[9px] text-slate-500 font-extrabold tracking-widest uppercase mb-2">Administrasi</p>
               <div className="space-y-1">
                 {/* 6. Settings */}
+                {userRole === "admin" && (
+                  <button
+                    onClick={() => { setActiveTab("user"); setSelectedJabatanIdForAbk(undefined); }}
+                    className={`w-full flex items-center gap-3 py-2.5 px-3 text-xs font-bold transition-all rounded-sm leading-none border-l-3 select-none text-left cursor-pointer ${
+                      activeTab === "user"
+                        ? "bg-slate-800 text-white border-blue-600"
+                        : "border-transparent text-slate-400 hover:text-white hover:bg-slate-800/40"
+                    }`}
+                  >
+                    <UserIcon className="w-4 h-4 text-blue-550 shrink-0" />
+                    MANAJEMEN PENGGUNA
+                  </button>
+                )}
                 <button
                   onClick={() => { setActiveTab("settings"); setSelectedJabatanIdForAbk(undefined); }}
                   className={`w-full flex items-center gap-3 py-2.5 px-3 text-xs font-bold transition-all rounded-sm leading-none border-l-3 select-none text-left cursor-pointer ${
@@ -546,15 +559,6 @@ export default function App() {
 
           </div>
 
-          {/* Compliance & Standard Label */}
-          <div className="px-6 space-y-2">
-            <div className="flex items-center gap-2 bg-slate-950/60 p-2.5 rounded-sm border border-slate-800 text-slate-350">
-              <BookOpen className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-              <span className="text-[9px] font-bold tracking-wider leading-none uppercase">
-                FORMASI ASN REGULER
-              </span>
-            </div>
-          </div>
         </div>
       </aside>
 
@@ -590,6 +594,7 @@ export default function App() {
               { id: "perkara", label: "DATA PERKARA", icon: <Scale className="w-3.5 h-3.5" /> },
               { id: "recap", label: "REKAP FORMASI", icon: <FileCheck2 className="w-3.5 h-3.5" /> },
               { id: "template", label: "TEMPLATE ACUAN", icon: <BookOpen className="w-3.5 h-3.5" /> },
+              { id: "user", label: "USER", icon: <UserIcon className="w-3.5 h-3.5" /> },
               { id: "settings", label: "PENGATURAN", icon: <SlidersHorizontal className="w-3.5 h-3.5" /> }
             ].map(item => (
               <button
@@ -676,9 +681,25 @@ export default function App() {
             <span className="hidden sm:inline-flex bg-blue-50 border border-blue-100 text-blue-700 px-2.5 py-1 rounded-sm text-[9px] font-extrabold uppercase tracking-widest leading-none">
               E-Gov Standard
             </span>
-            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200 text-slate-700 font-bold text-xs select-none">
-              BK
-            </div>
+            {user && (
+              <div className="flex items-center gap-3 pl-3 border-l border-slate-200">
+                <div className="hidden md:flex flex-col items-end">
+                  <span className="text-[10px] font-bold text-slate-800">{user.email}</span>
+                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-sm uppercase ${
+                    userRole === 'admin' ? 'bg-rose-100 text-rose-700' : 
+                    userRole === 'editor' ? 'bg-amber-100 text-amber-700' : 
+                    'bg-emerald-100 text-emerald-700'
+                  }`}>{userRole}</span>
+                </div>
+                <button 
+                  onClick={() => signOut(auth)}
+                  className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200 text-slate-700 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                  title="Keluar / Logout"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </div>
         </header>
 
@@ -705,7 +726,7 @@ export default function App() {
               onAddUnit={handleAddUnit}
               onUpdateUnit={handleUpdateUnit}
               onDeleteUnit={handleDeleteUnit}
-              onLoadPreset={handleLoadPreset}
+              userRole={userRole}
             />
           )}
 
@@ -716,6 +737,7 @@ export default function App() {
               onAddJabatan={handleAddJabatan}
               onUpdateJabatan={handleUpdateJabatan}
               onDeleteJabatan={handleDeleteJabatan}
+              userRole={userRole}
             />
           )}
 
@@ -727,6 +749,7 @@ export default function App() {
               onUpdateTasks={handleUpdateTasks}
               selectedJabatanIdForAbk={selectedJabatanIdForAbk}
               setSelectedJabatanIdForAbk={setSelectedJabatanIdForAbk}
+              userRole={userRole}
             />
           )}
 
@@ -748,6 +771,7 @@ export default function App() {
               onAddDataPerkara={handleAddDataPerkara}
               onUpdateDataPerkara={handleUpdateDataPerkara}
               onDeleteDataPerkara={handleDeleteDataPerkara}
+              userRole={userRole}
             />
           )}
 
@@ -768,14 +792,17 @@ export default function App() {
               onWipeData={handleWipeData}
               onImportBackup={handleImportBackup}
               onExportBackup={handleExportBackup}
+              userRole={userRole}
+            />
+          )}
+
+          {activeTab === "user" && userRole === "admin" && (
+            <UserTab
+              settings={settings}
+              userRole={userRole}
             />
           )}
         </main>
-
-        {/* FOOTER METRIC STAMP */}
-        <footer className="bg-slate-50 text-slate-400 py-4 border-t border-slate-100 text-center text-[10px] select-none print:hidden shrink-0 font-bold uppercase tracking-wider">
-          SIM ANJAB-ABK • Menpan No. 1 Tahun 2020 • BKPSDM INTEGRATION
-        </footer>
 
       </div>
 
